@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "case_id": "lease-row-count-parse-failed",
+  "stage": "parse",
+  "terminal_event": "eof",
+  "parser": "ix2106_lease",
+  "transcript": "../ix2106/truncated-lease.txt",
+  "expected_failure": {
+    "kind": "parse_failed",
+    "retryable": false,
+    "snapshot_usable": false,
+    "emit_removals": false
+  },
+  "recovery": {
+    "action": "fail_poll",
+    "retry_within_poll": false,
+    "keep_scheduled_polling": true
+  }
+}
+

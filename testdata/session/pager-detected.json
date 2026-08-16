@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "case_id": "lease-pager-detected",
+  "stage": "command_output",
+  "transcript": "../ix2106/paged-lease.txt",
+  "expected_failure": {
+    "kind": "pager_detected",
+    "retryable": false,
+    "snapshot_usable": false,
+    "emit_removals": false
+  },
+  "recovery": {
+    "action": "fail_poll",
+    "retry_within_poll": false,
+    "keep_scheduled_polling": true
+  }
+}
+

@@ -1,0 +1,28 @@
+Leased to 24 clients
+Codes : D - Dynamic assignments, F - Fixed assignments
+  IP Address      MAC Address       BoundTime LeaseTime State     Profile
+F 192.0.2.10   02:00:00:00:00:01 2626      14400     Bound     fixture-profile
+F 192.0.2.11  02:00:00:00:00:02 3570      14400     Bound     fixture-profile
+F 192.0.2.12  02:00:00:00:00:03 4571      14400     Bound     fixture-profile
+D 192.0.2.13   02:00:00:00:00:04 6223      14400     Bound     fixture-profile
+D 192.0.2.14   02:00:00:00:00:05 1360      14400     Bound     fixture-profile
+D 192.0.2.15   02:00:00:00:00:06 6891      14400     Bound     fixture-profile
+D 192.0.2.16   02:00:00:00:00:07 5076      14400     Bound     fixture-profile
+D 192.0.2.17   02:00:00:00:00:08 4452      14400     Bound     fixture-profile
+D 192.0.2.18   02:00:00:00:00:09 4159      14400     Bound     fixture-profile
+D 192.0.2.19   02:00:00:00:00:0a 2987      14400     Bound     fixture-profile
+D 192.0.2.20   02:00:00:00:00:0b 1207      14400     Bound     fixture-profile
+D 192.0.2.21   02:00:00:00:00:0c 1738      14400     Bound     fixture-profile
+D 192.0.2.22   02:00:00:00:00:0d 6224      14400     Bound     fixture-profile
+D 192.0.2.23   02:00:00:00:00:0e 1410      14400     Bound     fixture-profile
+D 192.0.2.24   02:00:00:00:00:0f 1233      14400     Bound     fixture-profile
+D 192.0.2.25   02:00:00:00:00:10 5416      14400     Bound     fixture-profile
+D 192.0.2.26   02:00:00:00:00:11 3106      14400     Bound     fixture-profile
+D 192.0.2.27   02:00:00:00:00:12 485       14400     Bound     fixture-profile
+D 192.0.2.28   02:00:00:00:00:13 2093      14400     Bound     fixture-profile
+D 192.0.2.29   02:00:00:00:00:14 5147      14400     Bound     fixture-profile
+D 192.0.2.30   02:00:00:00:00:15 1694      14400     Bound     fixture-profile
+D 192.0.2.31   02:00:00:00:00:16 1044      14400     Bound     fixture-profile
+D 192.0.2.32   02:00:00:00:00:17 551       14400     Bound     fixture-profile
+D 192.0.2.33   02:00:00:00:00:18 4274      14400     Bound     fixture-profile
+ix-fixture(config)%

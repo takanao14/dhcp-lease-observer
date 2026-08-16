@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "case_id": "ssh-authentication-failed",
+  "stage": "authentication",
+  "connection_event": "authentication_failed",
+  "expected_failure": {
+    "kind": "authentication_failed",
+    "retryable": false,
+    "snapshot_usable": false,
+    "emit_removals": false
+  }
+}
+

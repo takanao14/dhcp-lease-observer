@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "case_id": "ssh-host-key-mismatch",
+  "stage": "host_key_verification",
+  "connection_event": "host_key_mismatch",
+  "expected_failure": {
+    "kind": "host_key_mismatch",
+    "retryable": false,
+    "snapshot_usable": false,
+    "emit_removals": false
+  }
+}
+

@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "case_id": "lease-command-echo-mismatch",
+  "stage": "command_boundary",
+  "terminal_event": "eof",
+  "expected_command": "show ip dhcp lease",
+  "transcript": "command-echo-mismatch-lease.txt",
+  "expected_failure": {
+    "kind": "command_echo_mismatch",
+    "retryable": false,
+    "snapshot_usable": false,
+    "emit_removals": false
+  },
+  "recovery": {
+    "action": "fail_poll",
+    "retry_within_poll": false,
+    "keep_scheduled_polling": true
+  }
+}
+

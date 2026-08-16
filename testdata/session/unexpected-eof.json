@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "case_id": "lease-unexpected-eof",
+  "terminal_event": "eof",
+  "transcript": "unexpected-eof-lease.txt",
+  "expected_failure": {
+    "kind": "unexpected_eof",
+    "retryable": true,
+    "snapshot_usable": false,
+    "emit_removals": false
+  }
+}
+

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "case_id": "show-command-authorization-failed",
+  "stage": "command_authorization",
+  "command": "show ip dhcp lease",
+  "command_event": "authorization_failed",
+  "expected_failure": {
+    "kind": "authorization_failed",
+    "retryable": false,
+    "snapshot_usable": false,
+    "emit_removals": false
+  }
+}
+

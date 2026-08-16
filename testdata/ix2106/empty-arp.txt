@@ -1,0 +1,5 @@
+ARP Neighbor Cache - 0 dynamic, 2048 free, 0 garbage, 0 static
+ARP neighbor cache auto refresh is disabled
+Protocol Address  Hardware Address   TTL       Uptime       Interface
+ix-fixture(config)%
+

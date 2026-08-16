@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: "1.25.x"
+          cache-dependency-path: go.sum
+      - name: Run release checks
+        run: |
+          go test ./...
+          go test -race ./...
+          go vet ./...
+      - name: Build deterministic release archives
+        run: go run ./cmd/package-release --version "$GITHUB_REF_NAME" --output-dir dist
+      - name: Verify archive contents and checksums
+        run: |
+          (cd dist && sha256sum --check checksums.txt)
+          for archive in dist/*.tar.gz; do
+            test "$(tar -tzf "$archive" | sort)" = $'LICENSE\ndhcp-lease-observer'
+          done
+          verify_dir="$(mktemp -d)"
+          tar -xzf dist/dhcp-lease-observer_"$GITHUB_REF_NAME"_linux_amd64.tar.gz -C "$verify_dir"
+          test "$("$verify_dir/dhcp-lease-observer" --version)" = "$GITHUB_REF_NAME"
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            dist/dhcp-lease-observer_"$GITHUB_REF_NAME"_linux_amd64.tar.gz \
+            dist/dhcp-lease-observer_"$GITHUB_REF_NAME"_linux_arm64.tar.gz \
+            dist/checksums.txt \
+            --verify-tag \
+            --generate-notes \
+            --title "$GITHUB_REF_NAME"

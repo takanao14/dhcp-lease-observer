@@ -1,0 +1,6 @@
+show ip dhcp lease
+Leased to 0 clients
+Codes : D - Dynamic assignments, F - Fixed assignments
+  IP Address      MAC Address       BoundTime LeaseTime State     Profile
+ix-fixture(config)%
+

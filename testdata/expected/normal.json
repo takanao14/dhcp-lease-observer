@@ -1,0 +1,513 @@
+{
+  "arp": {
+    "auto_refresh": false,
+    "free": 2008,
+    "garbage": 8,
+    "neighbors": [
+      {
+        "hardware_address": "02:00:00:00:00:19",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.34",
+        "ttl": "0:03:30",
+        "uptime": "97d17h4m18s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:1a",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.35",
+        "ttl": "0:01:10",
+        "uptime": "35d2h45m21s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:1b",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.36",
+        "ttl": "0:04:38",
+        "uptime": "35d2h45m37s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:1c",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.37",
+        "ttl": "0:04:54",
+        "uptime": "6d21h6m7s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:1d",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.38",
+        "ttl": "0:04:38",
+        "uptime": "6d21h7m43s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:1e",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.39",
+        "ttl": "0:04:47",
+        "uptime": "3:01:00"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:1f",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.40",
+        "ttl": "0:04:38",
+        "uptime": "0:16:38"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:20",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.41",
+        "ttl": "0:02:51",
+        "uptime": "1:45:45"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:21",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.42",
+        "ttl": "0:04:10",
+        "uptime": "4d8h14m32s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:05",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.14",
+        "ttl": "0:03:45",
+        "uptime": "79d14h49m20s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:06",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.15",
+        "ttl": "0:04:47",
+        "uptime": "97d17h4m18s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:07",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.16",
+        "ttl": "0:03:49",
+        "uptime": "5:54:26"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:09",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.18",
+        "ttl": "0:04:01",
+        "uptime": "3d7h12m59s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:0a",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.19",
+        "ttl": "0:03:09",
+        "uptime": "1d18h49m45s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:0b",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.20",
+        "ttl": "0:04:27",
+        "uptime": "2:20:35"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:0c",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.21",
+        "ttl": "0:04:38",
+        "uptime": "0:28:55"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:0e",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.23",
+        "ttl": "0:04:09",
+        "uptime": "2d15h4m26s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:0f",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.24",
+        "ttl": "0:03:46",
+        "uptime": "2:20:31"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:10",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.25",
+        "ttl": "0:04:46",
+        "uptime": "13d22h10m38s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:11",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.26",
+        "ttl": "0:04:25",
+        "uptime": "1d12h14m54s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:12",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.27",
+        "ttl": "0:04:16",
+        "uptime": "0:08:04"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:13",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.28",
+        "ttl": "0:02:55",
+        "uptime": "23d8h35m3s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:14",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.29",
+        "ttl": "0:04:11",
+        "uptime": "7d8h6m14s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:15",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.30",
+        "ttl": "0:04:04",
+        "uptime": "0:28:11"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:16",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.31",
+        "ttl": "0:04:39",
+        "uptime": "0:17:24"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:17",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.32",
+        "ttl": "0:04:53",
+        "uptime": "19d23h15m27s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:18",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.33",
+        "ttl": "0:03:45",
+        "uptime": "7d7h33m53s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:22",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.43",
+        "ttl": "0:04:37",
+        "uptime": "7d2h5m1s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:23",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.44",
+        "ttl": "0:03:35",
+        "uptime": "7d1h17m4s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:24",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.45",
+        "ttl": "0:02:47",
+        "uptime": "4d20h58m46s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:25",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.46",
+        "ttl": "0:04:28",
+        "uptime": "0:00:37"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:26",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.47",
+        "ttl": "0:04:25",
+        "uptime": "0:00:41"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:27",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.48",
+        "ttl": "0:04:52",
+        "uptime": "15d19h36m18s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:28",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.49",
+        "ttl": "0:04:28",
+        "uptime": "15d19h23m36s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:02",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.11",
+        "ttl": "0:02:27",
+        "uptime": "79d14h47m"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:29",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.50",
+        "ttl": "0:00:42",
+        "uptime": "2d21h43m3s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:2a",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.51",
+        "ttl": "0:00:47",
+        "uptime": "35d2h45m41s"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:2b",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.52",
+        "ttl": "0:03:50",
+        "uptime": "6d21h9m"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:2c",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.53",
+        "ttl": "0:04:47",
+        "uptime": "1:29:39"
+      },
+      {
+        "hardware_address": "02:00:00:00:00:2d",
+        "interface": "GigaEthernet0.0",
+        "ip": "192.0.2.54",
+        "ttl": "0:01:55",
+        "uptime": "6d2h42m52s"
+      }
+    ],
+    "reported_dynamic": 40,
+    "static": 0
+  },
+  "leases": {
+    "records": [
+      {
+        "assignment": "fixed",
+        "bound_time_seconds": 2626,
+        "hardware_address": "02:00:00:00:00:01",
+        "ip": "192.0.2.10",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "fixed",
+        "bound_time_seconds": 3570,
+        "hardware_address": "02:00:00:00:00:02",
+        "ip": "192.0.2.11",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "fixed",
+        "bound_time_seconds": 4571,
+        "hardware_address": "02:00:00:00:00:03",
+        "ip": "192.0.2.12",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "dynamic",
+        "bound_time_seconds": 6223,
+        "hardware_address": "02:00:00:00:00:04",
+        "ip": "192.0.2.13",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "dynamic",
+        "bound_time_seconds": 1360,
+        "hardware_address": "02:00:00:00:00:05",
+        "ip": "192.0.2.14",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "dynamic",
+        "bound_time_seconds": 6891,
+        "hardware_address": "02:00:00:00:00:06",
+        "ip": "192.0.2.15",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "dynamic",
+        "bound_time_seconds": 5076,
+        "hardware_address": "02:00:00:00:00:07",
+        "ip": "192.0.2.16",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "dynamic",
+        "bound_time_seconds": 4452,
+        "hardware_address": "02:00:00:00:00:08",
+        "ip": "192.0.2.17",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "dynamic",
+        "bound_time_seconds": 4159,
+        "hardware_address": "02:00:00:00:00:09",
+        "ip": "192.0.2.18",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "dynamic",
+        "bound_time_seconds": 2987,
+        "hardware_address": "02:00:00:00:00:0a",
+        "ip": "192.0.2.19",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "dynamic",
+        "bound_time_seconds": 1207,
+        "hardware_address": "02:00:00:00:00:0b",
+        "ip": "192.0.2.20",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "dynamic",
+        "bound_time_seconds": 1738,
+        "hardware_address": "02:00:00:00:00:0c",
+        "ip": "192.0.2.21",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "dynamic",
+        "bound_time_seconds": 6224,
+        "hardware_address": "02:00:00:00:00:0d",
+        "ip": "192.0.2.22",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "dynamic",
+        "bound_time_seconds": 1410,
+        "hardware_address": "02:00:00:00:00:0e",
+        "ip": "192.0.2.23",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "dynamic",
+        "bound_time_seconds": 1233,
+        "hardware_address": "02:00:00:00:00:0f",
+        "ip": "192.0.2.24",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "dynamic",
+        "bound_time_seconds": 5416,
+        "hardware_address": "02:00:00:00:00:10",
+        "ip": "192.0.2.25",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "dynamic",
+        "bound_time_seconds": 3106,
+        "hardware_address": "02:00:00:00:00:11",
+        "ip": "192.0.2.26",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "dynamic",
+        "bound_time_seconds": 485,
+        "hardware_address": "02:00:00:00:00:12",
+        "ip": "192.0.2.27",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "dynamic",
+        "bound_time_seconds": 2093,
+        "hardware_address": "02:00:00:00:00:13",
+        "ip": "192.0.2.28",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "dynamic",
+        "bound_time_seconds": 5147,
+        "hardware_address": "02:00:00:00:00:14",
+        "ip": "192.0.2.29",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "dynamic",
+        "bound_time_seconds": 1694,
+        "hardware_address": "02:00:00:00:00:15",
+        "ip": "192.0.2.30",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "dynamic",
+        "bound_time_seconds": 1044,
+        "hardware_address": "02:00:00:00:00:16",
+        "ip": "192.0.2.31",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "dynamic",
+        "bound_time_seconds": 551,
+        "hardware_address": "02:00:00:00:00:17",
+        "ip": "192.0.2.32",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      },
+      {
+        "assignment": "dynamic",
+        "bound_time_seconds": 4274,
+        "hardware_address": "02:00:00:00:00:18",
+        "ip": "192.0.2.33",
+        "lease_time_seconds": 14400,
+        "profile": "fixture-profile",
+        "state": "bound"
+      }
+    ],
+    "reported_count": 24
+  },
+  "schema_version": 1
+}

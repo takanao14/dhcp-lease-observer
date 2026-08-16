@@ -1,0 +1,24 @@
+{
+  "reported_count": 2,
+  "records": [
+    {
+      "assignment": "dynamic",
+      "ip": "192.0.2.60",
+      "hardware_address": "02:00:00:00:00:30",
+      "bound_time_seconds": 120,
+      "lease_time_seconds": 7200,
+      "state": "bound",
+      "profile": "fixture-profile-a"
+    },
+    {
+      "assignment": "fixed",
+      "ip": "192.0.2.61",
+      "hardware_address": "02:00:00:00:00:31",
+      "bound_time_seconds": 240,
+      "lease_time_seconds": 14400,
+      "state": "bound",
+      "profile": "fixture-profile-b"
+    }
+  ]
+}
+

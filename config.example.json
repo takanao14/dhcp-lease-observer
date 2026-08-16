@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "source_instance": "ix2106-main",
+  "scope": "lan",
+  "collection_timeout_seconds": 30,
+  "ix2106": {
+    "address": "192.0.2.1:22",
+    "username": "dhcp-observer",
+    "host_key_sha256": "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    "connect_timeout_seconds": 5,
+    "handshake_timeout_seconds": 10,
+    "auth_timeout_seconds": 5,
+    "command_timeout_seconds": 10,
+    "max_frame_bytes": 1048576
+  },
+  "state_path": "/var/lib/dhcp-lease-observer/last-good.json",
+  "prometheus_path": "/var/lib/prometheus/node-exporter/dhcp_lease_observer.prom"
+}

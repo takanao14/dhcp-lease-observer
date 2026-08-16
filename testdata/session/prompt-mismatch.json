@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "case_id": "lease-operation-prompt-mismatch",
+  "stage": "command_completion",
+  "terminal_event": "eof",
+  "transcript": "prompt-mismatch-lease.txt",
+  "expected_prompt_kind": "monitor_config",
+  "expected_failure": {
+    "kind": "prompt_mismatch",
+    "retryable": false,
+    "snapshot_usable": false,
+    "emit_removals": false
+  },
+  "recovery": {
+    "action": "fail_poll",
+    "retry_within_poll": false,
+    "keep_scheduled_polling": true
+  }
+}
+

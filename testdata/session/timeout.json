@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "case_id": "lease-command-timeout",
+  "terminal_event": "timeout",
+  "transcript": "timeout-lease.txt",
+  "expected_failure": {
+    "kind": "timeout",
+    "retryable": true,
+    "snapshot_usable": false,
+    "emit_removals": false
+  }
+}
+

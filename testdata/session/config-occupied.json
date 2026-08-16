@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "case_id": "config-process-occupied",
+  "stage": "config_entry",
+  "transcript": "../ix2106/config-occupied.txt",
+  "expected_failure": {
+    "kind": "config_occupied",
+    "retryable": true,
+    "snapshot_usable": false,
+    "emit_removals": false
+  },
+  "recovery": {
+    "action": "retry_next_poll",
+    "force_unlock": false
+  }
+}
+

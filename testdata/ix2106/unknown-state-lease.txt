@@ -1,0 +1,6 @@
+Leased to 1 clients
+Codes : D - Dynamic assignments, F - Fixed assignments
+  IP Address      MAC Address       BoundTime LeaseTime State     Profile
+D 192.0.2.62 02:00:00:00:00:32 120 7200 FixtureUnknown fixture-profile-a
+ix-fixture(config)%
+
