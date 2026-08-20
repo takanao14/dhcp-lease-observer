@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/takanao14/dhcp-lease-observer/internal/atomicfile"
+	"github.com/takanao14/dhcp-lease-observer/internal/safefile"
 )
 
 const MaxStateBytes = 4 << 20
@@ -15,18 +15,11 @@ const MaxStateBytes = 4 << 20
 var ErrInvalidState = errors.New("invalid last-good state")
 
 func Load(path string) (Snapshot, error) {
-	info, err := os.Lstat(path)
+	file, err := safefile.OpenRegular(path, 0o077, MaxStateBytes)
 	if err != nil {
-		return Snapshot{}, err
-	}
-	if !info.Mode().IsRegular() || info.Mode().Perm()&0o077 != 0 {
-		return Snapshot{}, ErrInvalidState
-	}
-	if info.Size() > MaxStateBytes {
-		return Snapshot{}, ErrInvalidState
-	}
-	file, err := os.Open(path)
-	if err != nil {
+		if errors.Is(err, safefile.ErrUnsafeFile) {
+			return Snapshot{}, ErrInvalidState
+		}
 		return Snapshot{}, err
 	}
 	defer file.Close()

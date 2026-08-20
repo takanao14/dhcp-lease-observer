@@ -42,6 +42,7 @@ type FailureContract struct {
 type Failure struct {
 	kind      FailureKind
 	retryable bool
+	command   string
 }
 
 func (failure *Failure) Error() string {
@@ -59,6 +60,12 @@ func (failure *Failure) Retryable() bool {
 	return failure.retryable
 }
 
+// Command returns the allowlisted command associated with an authorization
+// failure. It never returns source output.
+func (failure *Failure) Command() string {
+	return failure.command
+}
+
 func (failure *Failure) Contract() FailureContract {
 	return FailureContract{
 		Kind:           failure.kind,
@@ -72,6 +79,7 @@ var (
 	configPromptPattern = regexp.MustCompile(`^[A-Za-z0-9._-]+\(config\)%$`)
 	promptLikePattern   = regexp.MustCompile(`^[A-Za-z0-9._-]+(?:\(config\))?[#%]$`)
 	commandEchoPattern  = regexp.MustCompile(`(?i)^(?:show|terminal|configure|exit)(?:\s|$)`)
+	fixedCommandPattern = regexp.MustCompile(`^(?:configure|terminal length 0|show ip dhcp lease|show arp entry|exit)$`)
 
 	failureMessages = map[FailureKind]string{
 		FailureUnexpectedEOF:       "SSH channel reached EOF before the expected config prompt",
@@ -94,11 +102,16 @@ func ConnectionFailure(kind FailureKind) (*Failure, error) {
 	return newFailure(kind), nil
 }
 
-func CommandFailure(kind FailureKind) (*Failure, error) {
+func CommandFailure(kind FailureKind, command string) (*Failure, error) {
 	if kind != FailureAuthorization {
 		return nil, fmt.Errorf("unsupported command failure kind: %q", kind)
 	}
-	return newFailure(kind), nil
+	if !fixedCommandPattern.MatchString(command) {
+		return nil, errors.New("authorization failure requires an allowlisted command")
+	}
+	failure := newFailure(kind)
+	failure.command = command
+	return failure, nil
 }
 
 func FramingFailure(kind FailureKind) (*Failure, error) {
@@ -140,7 +153,7 @@ func ExtractCompleteCommandBody(
 
 	lines := strings.Split(text, "\n")
 	last := lastContentLine(lines)
-	if last >= 0 && configPromptPattern.MatchString(strings.TrimSpace(lines[last])) {
+	if last >= 0 && promptLikePattern.MatchString(strings.TrimSpace(lines[last])) {
 		body := append([]string(nil), lines[:last]...)
 		if expectedCommand != "" {
 			first := firstContentLine(body)
@@ -154,11 +167,17 @@ func ExtractCompleteCommandBody(
 				}
 			}
 		}
+		if authorizationRejected(body) {
+			failure, err := CommandFailure(FailureAuthorization, expectedCommand)
+			if err != nil {
+				return nil, err
+			}
+			return nil, failure
+		}
+		if !configPromptPattern.MatchString(strings.TrimSpace(lines[last])) {
+			return nil, newFailure(FailurePromptMismatch)
+		}
 		return []byte(strings.Join(body, "\n")), nil
-	}
-
-	if last >= 0 && promptLikePattern.MatchString(strings.TrimSpace(lines[last])) {
-		return nil, newFailure(FailurePromptMismatch)
 	}
 	switch event {
 	case TerminalEOF:
@@ -168,6 +187,12 @@ func ExtractCompleteCommandBody(
 	default:
 		return nil, errors.New("unsupported terminal event")
 	}
+}
+
+func authorizationRejected(lines []string) bool {
+	first := firstContentLine(lines)
+	return first >= 0 && lastContentLine(lines) == first &&
+		strings.TrimSpace(lines[first]) == "?Invalid command"
 }
 
 func firstContentLine(lines []string) int {

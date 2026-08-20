@@ -211,6 +211,24 @@ func TestLoadRejectsUnsafeOrCorruptState(t *testing.T) {
 	}
 }
 
+func TestLoadRejectsStateSymlink(t *testing.T) {
+	snapshot := normalizeRecords(t, testGenerator(t, 'a'), time.Now().UTC(), []model.LeaseRecord{
+		testRecord(t, "192.0.2.10", "02:00:00:00:00:01", 10),
+	})
+	directory := t.TempDir()
+	target := filepath.Join(directory, "target.json")
+	if err := Save(target, snapshot); err != nil {
+		t.Fatalf("save target state: %v", err)
+	}
+	link := filepath.Join(directory, "last-good.json")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatalf("create state symlink: %v", err)
+	}
+	if _, err := Load(link); !errors.Is(err, ErrInvalidState) {
+		t.Fatalf("load error = %v, want ErrInvalidState", err)
+	}
+}
+
 func readGoldenSnapshot(t *testing.T) model.LeaseSnapshot {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join("..", "..", "testdata", "expected", "normal.json"))

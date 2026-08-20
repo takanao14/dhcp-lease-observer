@@ -120,6 +120,19 @@ func TestLoadCredentialsRejectsUnsafeInput(t *testing.T) {
 	}
 }
 
+func TestLoadCredentialsRejectsSymlink(t *testing.T) {
+	directory := t.TempDir()
+	target := filepath.Join(directory, "password-target")
+	writeFile(t, target, []byte("fixture-password"), 0o600)
+	if err := os.Symlink(target, filepath.Join(directory, PasswordCredential)); err != nil {
+		t.Fatalf("create credential symlink: %v", err)
+	}
+	writeFile(t, filepath.Join(directory, IdentityCredential), []byte(strings.Repeat("k", 32)), 0o600)
+	if _, err := LoadCredentials(directory); !errors.Is(err, ErrInvalidCredentials) {
+		t.Fatalf("load error = %v, want ErrInvalidCredentials", err)
+	}
+}
+
 func writeFile(t *testing.T, path string, data []byte, mode os.FileMode) {
 	t.Helper()
 	if err := os.WriteFile(path, data, mode); err != nil {

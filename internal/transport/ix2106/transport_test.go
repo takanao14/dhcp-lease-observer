@@ -69,6 +69,27 @@ func TestCollectPreservesAuthoritativeLeaseWhenARPFramingFails(t *testing.T) {
 	}
 }
 
+func TestCollectClassifiesCommandAuthorizationFailure(t *testing.T) {
+	server := startTestServerBehavior(t, "fixture-user", "fixture-password", testServerBehavior{
+		deniedCommand: commandLease,
+	})
+	defer server.close()
+	config := NewConfig(server.address, "fixture-user", server.fingerprint)
+	config.ConnectTimeout = 2 * time.Second
+	config.HandshakeTimeout = 2 * time.Second
+	config.AuthTimeout = 2 * time.Second
+	config.CommandTimeout = 2 * time.Second
+
+	_, err := Collect(context.Background(), config, []byte("fixture-password"))
+	var failure *sessioncontract.Failure
+	if !errors.As(err, &failure) || failure.Kind() != sessioncontract.FailureAuthorization {
+		t.Fatalf("error = %v, want authorization failure", err)
+	}
+	if failure.Command() != commandLease {
+		t.Fatalf("authorization command = %q, want %q", failure.Command(), commandLease)
+	}
+}
+
 func TestConfigRejectsUnsafeOrUnboundedValues(t *testing.T) {
 	validPin := "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 	tests := []struct {
@@ -264,6 +285,24 @@ func startTestServerOptions(
 	authDelay time.Duration,
 	arpPager bool,
 ) *testServer {
+	return startTestServerBehavior(t, username, password, testServerBehavior{
+		authDelay: authDelay,
+		arpPager:  arpPager,
+	})
+}
+
+type testServerBehavior struct {
+	authDelay     time.Duration
+	arpPager      bool
+	deniedCommand string
+}
+
+func startTestServerBehavior(
+	t *testing.T,
+	username string,
+	password string,
+	behavior testServerBehavior,
+) *testServer {
 	t.Helper()
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -280,8 +319,8 @@ func startTestServerOptions(
 			MACs:         []string{ssh.HMACSHA256, ssh.HMACSHA512},
 		},
 		PasswordCallback: func(metadata ssh.ConnMetadata, supplied []byte) (*ssh.Permissions, error) {
-			if authDelay > 0 {
-				time.Sleep(authDelay)
+			if behavior.authDelay > 0 {
+				time.Sleep(behavior.authDelay)
 			}
 			if metadata.User() != username || string(supplied) != password {
 				return nil, errors.New("rejected")
@@ -323,14 +362,14 @@ func startTestServerOptions(
 			if err != nil {
 				return
 			}
-			handleTestSession(channel, channelRequests, arpPager)
+			handleTestSession(channel, channelRequests, behavior)
 			return
 		}
 	}()
 	return server
 }
 
-func handleTestSession(channel ssh.Channel, requests <-chan *ssh.Request, arpPager bool) {
+func handleTestSession(channel ssh.Channel, requests <-chan *ssh.Request, behavior testServerBehavior) {
 	defer channel.Close()
 	for request := range requests {
 		switch request.Type {
@@ -338,7 +377,7 @@ func handleTestSession(channel ssh.Channel, requests <-chan *ssh.Request, arpPag
 			request.Reply(true, nil)
 		case "shell":
 			request.Reply(true, nil)
-			serveTestCLI(channel, arpPager)
+			serveTestCLI(channel, behavior)
 			return
 		default:
 			request.Reply(false, nil)
@@ -346,13 +385,21 @@ func handleTestSession(channel ssh.Channel, requests <-chan *ssh.Request, arpPag
 	}
 }
 
-func serveTestCLI(channel ssh.Channel, arpPager bool) {
+func serveTestCLI(channel ssh.Channel, behavior testServerBehavior) {
 	_, _ = fmt.Fprint(channel, "ix-fixture%")
 	configurationMode := false
 	scanner := bufio.NewScanner(channel)
 	for scanner.Scan() {
 		command := strings.TrimSpace(scanner.Text())
 		_, _ = fmt.Fprintf(channel, "%s\r\n", command)
+		if command == behavior.deniedCommand {
+			prompt := "ix-fixture%"
+			if configurationMode {
+				prompt = "ix-fixture(config)%"
+			}
+			_, _ = fmt.Fprintf(channel, "?Invalid command\r\n%s", prompt)
+			continue
+		}
 		switch command {
 		case commandConfigure:
 			configurationMode = true
@@ -367,7 +414,7 @@ func serveTestCLI(channel ssh.Channel, arpPager bool) {
 					"ix-fixture(config)%",
 			)
 		case commandARP:
-			if arpPager {
+			if behavior.arpPager {
 				_, _ = fmt.Fprint(channel, "--More--")
 				continue
 			}

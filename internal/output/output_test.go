@@ -172,6 +172,29 @@ func TestWriteStatusEventIsSanitized(t *testing.T) {
 	}
 }
 
+func TestWriteStatusEventRecordsOnlyAllowlistedAuthorizationCommand(t *testing.T) {
+	event := StatusEvent{
+		SchemaVersion:  1,
+		ObservedAt:     time.Unix(1786842123, 0).UTC(),
+		Event:          "collector_status",
+		SourceInstance: "fixture-router",
+		Up:             false,
+		FailureClass:   "authorization_failed",
+		Command:        "show ip dhcp lease",
+	}
+	var output bytes.Buffer
+	if err := WriteStatusEvent(&output, event); err != nil {
+		t.Fatalf("write authorization status: %v", err)
+	}
+	if !strings.Contains(output.String(), `"command":"show ip dhcp lease"`) {
+		t.Fatalf("authorization command was not recorded: %s", output.String())
+	}
+	event.Command = "show running-config secret"
+	if err := WriteStatusEvent(&bytes.Buffer{}, event); err == nil {
+		t.Fatal("non-allowlisted command was accepted")
+	}
+}
+
 func TestWriteStatusEventAcceptsDegradedSuccess(t *testing.T) {
 	event := StatusEvent{
 		SchemaVersion:  1,

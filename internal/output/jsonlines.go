@@ -21,6 +21,7 @@ type StatusEvent struct {
 	Degraded       bool      `json:"degraded,omitempty"`
 	FailureClass   string    `json:"failure_class,omitempty"`
 	Retryable      bool      `json:"retryable,omitempty"`
+	Command        string    `json:"command,omitempty"`
 }
 
 var failureClassPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,63}$`)
@@ -61,7 +62,21 @@ func WriteStatusEvent(writer io.Writer, event StatusEvent) error {
 	} else if event.Degraded || !failureClassPattern.MatchString(event.FailureClass) {
 		return errors.New("failed status event lacks a valid failure class")
 	}
+	authorizationFailure := event.FailureClass == "authorization_failed" ||
+		event.FailureClass == "arp_authorization_failed"
+	if authorizationFailure != validFixedCommand(event.Command) {
+		return errors.New("collector status event has an invalid command")
+	}
 	encoder := json.NewEncoder(writer)
 	encoder.SetEscapeHTML(false)
 	return encoder.Encode(event)
+}
+
+func validFixedCommand(command string) bool {
+	switch command {
+	case "configure", "terminal length 0", "show ip dhcp lease", "show arp entry", "exit":
+		return true
+	default:
+		return false
+	}
 }

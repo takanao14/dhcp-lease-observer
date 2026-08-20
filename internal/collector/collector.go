@@ -48,6 +48,7 @@ type Result struct {
 type Failure struct {
 	kind      string
 	retryable bool
+	command   string
 }
 
 var labelPattern = regexp.MustCompile(`^[A-Za-z0-9._-]{1,128}$`)
@@ -62,6 +63,10 @@ func (failure *Failure) Kind() string {
 
 func (failure *Failure) Retryable() bool {
 	return failure.retryable
+}
+
+func (failure *Failure) Command() string {
+	return failure.command
 }
 
 func (runner Runner) Run(ctx context.Context) (Result, error) {
@@ -79,8 +84,8 @@ func (runner Runner) Run(ctx context.Context) (Result, error) {
 
 	bodies, err := runner.Source.Collect(ctx)
 	if err != nil {
-		kind, retryable := classifyError(err)
-		return Result{}, runner.fail(startedAt, previousState, newFailure(kind, retryable))
+		kind, retryable, command := classifyError(err)
+		return Result{}, runner.fail(startedAt, previousState, newFailure(kind, retryable, command))
 	}
 	leases, err := parser.ParseLease(bytes.NewReader(bodies.Lease))
 	if err != nil {
@@ -90,6 +95,7 @@ func (runner Runner) Run(ctx context.Context) (Result, error) {
 	arp := model.ARPTable{Neighbors: []model.ARPNeighbor{}}
 	arpAvailable := bodies.ARPFailure == nil
 	arpFailureClass := ""
+	arpFailureCommand := ""
 	if arpAvailable {
 		arp, err = parser.ParseARP(bytes.NewReader(bodies.ARP))
 		if err != nil {
@@ -97,8 +103,9 @@ func (runner Runner) Run(ctx context.Context) (Result, error) {
 			arpFailureClass = "arp_parse_failed"
 		}
 	} else {
-		kind, _ := classifyError(bodies.ARPFailure)
+		kind, _, command := classifyError(bodies.ARPFailure)
 		arpFailureClass = "arp_" + kind
+		arpFailureCommand = command
 		if len(arpFailureClass) > 64 {
 			arpFailureClass = "arp_acquisition_failed"
 		}
@@ -123,16 +130,6 @@ func (runner Runner) Run(ctx context.Context) (Result, error) {
 		}
 		return Result{}, runner.fail(startedAt, previousState, newFailure(kind, false))
 	}
-	if err := state.Save(runner.StatePath, current); err != nil {
-		return Result{}, runner.fail(startedAt, previousState, newFailure("state_save_failed", true))
-	}
-	duration := nonNegativeDuration(runner.Now().UTC().Sub(startedAt))
-	if err := output.SavePrometheus(
-		runner.PrometheusPath,
-		runner.metrics(true, startedAt, duration, &current),
-	); err != nil {
-		return Result{}, newFailure("metrics_write_failed", true)
-	}
 	if err := output.WriteEvents(runner.Events, events); err != nil {
 		return Result{}, newFailure("event_output_failed", true)
 	}
@@ -145,9 +142,20 @@ func (runner Runner) Run(ctx context.Context) (Result, error) {
 			Up:             true,
 			Degraded:       true,
 			FailureClass:   arpFailureClass,
+			Command:        arpFailureCommand,
 		}); err != nil {
 			return Result{}, newFailure("event_output_failed", true)
 		}
+	}
+	if err := state.Save(runner.StatePath, current); err != nil {
+		return Result{}, runner.fail(startedAt, previousState, newFailure("state_save_failed", true))
+	}
+	duration := nonNegativeDuration(runner.Now().UTC().Sub(startedAt))
+	if err := output.SavePrometheus(
+		runner.PrometheusPath,
+		runner.metrics(true, startedAt, duration, &current),
+	); err != nil {
+		return Result{}, newFailure("metrics_write_failed", true)
 	}
 	return Result{Events: len(events), ARPAvailable: arpAvailable}, nil
 }
@@ -162,6 +170,7 @@ func (runner Runner) fail(startedAt time.Time, previous *state.Snapshot, failure
 		Up:             false,
 		FailureClass:   failure.kind,
 		Retryable:      failure.retryable,
+		Command:        failure.command,
 	})
 	metrics := runner.metrics(false, startedAt, nonNegativeDuration(observedAt.Sub(startedAt)), previous)
 	if err := output.SavePrometheus(runner.PrometheusPath, metrics); err != nil {
@@ -220,20 +229,24 @@ func previousPointer(snapshot state.Snapshot, exists bool) *state.Snapshot {
 	return &snapshot
 }
 
-func classifyError(err error) (string, bool) {
+func classifyError(err error) (string, bool, string) {
 	var sessionFailure *sessioncontract.Failure
 	if errors.As(err, &sessionFailure) {
-		return string(sessionFailure.Kind()), sessionFailure.Retryable()
+		return string(sessionFailure.Kind()), sessionFailure.Retryable(), sessionFailure.Command()
 	}
 	var transportFailure *transport.Error
 	if errors.As(err, &transportFailure) {
-		return string(transportFailure.Kind()), transportFailure.Retryable()
+		return string(transportFailure.Kind()), transportFailure.Retryable(), ""
 	}
-	return "acquisition_failed", true
+	return "acquisition_failed", true, ""
 }
 
-func newFailure(kind string, retryable bool) *Failure {
-	return &Failure{kind: kind, retryable: retryable}
+func newFailure(kind string, retryable bool, command ...string) *Failure {
+	failure := &Failure{kind: kind, retryable: retryable}
+	if len(command) == 1 {
+		failure.command = command[0]
+	}
+	return failure
 }
 
 func nonNegativeDuration(value time.Duration) time.Duration {

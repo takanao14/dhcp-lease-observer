@@ -6,12 +6,12 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/takanao14/dhcp-lease-observer/internal/safefile"
 	transport "github.com/takanao14/dhcp-lease-observer/internal/transport/ix2106"
 )
 
@@ -51,15 +51,11 @@ type IX2106 struct {
 var labelPattern = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 
 func Load(path string) (Config, error) {
-	info, err := os.Lstat(path)
+	file, err := safefile.OpenRegular(path, 0o022, MaxConfigBytes)
 	if err != nil {
-		return Config{}, err
-	}
-	if !info.Mode().IsRegular() || info.Mode().Perm()&0o022 != 0 || info.Size() > MaxConfigBytes {
-		return Config{}, ErrInvalidConfig
-	}
-	file, err := os.Open(path)
-	if err != nil {
+		if errors.Is(err, safefile.ErrUnsafeFile) {
+			return Config{}, ErrInvalidConfig
+		}
 		return Config{}, err
 	}
 	defer file.Close()
@@ -162,15 +158,11 @@ func (credentials *Credentials) Clear() {
 }
 
 func readCredential(path string, maxBytes int64) ([]byte, error) {
-	info, err := os.Lstat(path)
+	file, err := safefile.OpenRegular(path, 0o077, maxBytes)
 	if err != nil {
-		return nil, err
-	}
-	if !info.Mode().IsRegular() || info.Mode().Perm()&0o077 != 0 || info.Size() > maxBytes {
-		return nil, ErrInvalidCredentials
-	}
-	file, err := os.Open(path)
-	if err != nil {
+		if errors.Is(err, safefile.ErrUnsafeFile) {
+			return nil, ErrInvalidCredentials
+		}
 		return nil, err
 	}
 	defer file.Close()

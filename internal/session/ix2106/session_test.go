@@ -15,6 +15,7 @@ import (
 type contractFixture struct {
 	ConnectionEvent FailureKind     `json:"connection_event"`
 	CommandEvent    FailureKind     `json:"command_event"`
+	Command         string          `json:"command"`
 	TerminalEvent   TerminalEvent   `json:"terminal_event"`
 	ExpectedCommand string          `json:"expected_command"`
 	Transcript      string          `json:"transcript"`
@@ -64,6 +65,18 @@ func TestPromptWinsOverTerminalEvent(t *testing.T) {
 	}
 }
 
+func TestExtractClassifiesAuthorizationFailureAndKeepsOnlyCommand(t *testing.T) {
+	transcript := []byte("show ip dhcp lease\r\n?Invalid command\r\nix-fixture(config)%")
+	_, err := ExtractCompleteCommandBody(transcript, TerminalEOF, "show ip dhcp lease")
+	var failure *Failure
+	if !errors.As(err, &failure) || failure.Kind() != FailureAuthorization {
+		t.Fatalf("error = %v, want authorization failure", err)
+	}
+	if failure.Command() != "show ip dhcp lease" || strings.Contains(failure.Error(), "Invalid command") {
+		t.Fatalf("authorization failure retained unsafe detail: %#v, %v", failure, failure)
+	}
+}
+
 func TestFramingFailuresMatchStage1Contracts(t *testing.T) {
 	tests := []struct {
 		name string
@@ -108,7 +121,7 @@ func TestConnectionAndCommandFailuresMatchStage1Contracts(t *testing.T) {
 	}
 
 	fixture := readContractFixture(t, "authorization-failed.json")
-	failure, err := CommandFailure(fixture.CommandEvent)
+	failure, err := CommandFailure(fixture.CommandEvent, fixture.Command)
 	if err != nil {
 		t.Fatalf("create command failure: %v", err)
 	}
@@ -136,8 +149,11 @@ func TestUnsupportedFailureKindsAreRejected(t *testing.T) {
 	if _, err := ConnectionFailure(FailureTimeout); err == nil {
 		t.Fatal("unsupported connection failure kind was accepted")
 	}
-	if _, err := CommandFailure(FailureParse); err == nil {
+	if _, err := CommandFailure(FailureParse, "show ip dhcp lease"); err == nil {
 		t.Fatal("unsupported command failure kind was accepted")
+	}
+	if _, err := CommandFailure(FailureAuthorization, "show running-config secret"); err == nil {
+		t.Fatal("non-allowlisted command was accepted")
 	}
 	if _, err := FramingFailure(FailureAuthentication); err == nil {
 		t.Fatal("unsupported framing failure kind was accepted")

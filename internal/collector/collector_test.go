@@ -138,6 +138,35 @@ func TestRunDoesNotCreateStateWhenLeaseParsingFails(t *testing.T) {
 	}
 }
 
+func TestRunDoesNotAdvanceStateWhenEventOutputFails(t *testing.T) {
+	runner, _ := newTestRunner(t, fixtureBodies(t))
+	runner.Events = failingEventWriter{}
+	_, err := runner.Run(context.Background())
+	var failure *Failure
+	if !errors.As(err, &failure) || failure.Kind() != "event_output_failed" {
+		t.Fatalf("failure = %#v, err = %v", failure, err)
+	}
+	if _, statErr := os.Stat(runner.StatePath); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("state advanced after event failure: %v", statErr)
+	}
+}
+
+func TestRunEmitsEventsAndAdvancesStateBeforeMetricsFailure(t *testing.T) {
+	runner, events := newTestRunner(t, fixtureBodies(t))
+	runner.PrometheusPath = t.TempDir()
+	_, err := runner.Run(context.Background())
+	var failure *Failure
+	if !errors.As(err, &failure) || failure.Kind() != "metrics_write_failed" {
+		t.Fatalf("failure = %#v, err = %v", failure, err)
+	}
+	if _, loadErr := state.Load(runner.StatePath); loadErr != nil {
+		t.Fatalf("state was not advanced after accepted events: %v", loadErr)
+	}
+	if strings.Count(events.String(), `"type":"lease_bound"`) != 24 {
+		t.Fatalf("events were not emitted before metrics failure: %s", events.String())
+	}
+}
+
 func newTestRunner(t *testing.T, bodies transport.CommandBodies) (Runner, *bytes.Buffer) {
 	t.Helper()
 	directory := t.TempDir()
@@ -188,4 +217,10 @@ func readFile(t *testing.T, path string) string {
 		t.Fatalf("read %s: %v", path, err)
 	}
 	return string(data)
+}
+
+type failingEventWriter struct{}
+
+func (failingEventWriter) Write([]byte) (int, error) {
+	return 0, errors.New("fixture event destination failure")
 }
