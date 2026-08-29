@@ -1,2 +1,5 @@
 .idea/
 dist/
+secrets/
+bin/
+config.json
