@@ -1,0 +1,11 @@
+Leased to 4 clients
+Codes : D - Dynamic assignments, F - Fixed assignments
+  IP Address      MAC Address       BoundTime LeaseTime State     Profile
+F 192.0.2.10 02:00:00:00:00:01 N/A N/A Offered fixture-profile
+D 192.0.2.11 02:00:00:00:00:02 N/A N/A Abandoned fixture-profile
+D 192.0.2.12 02:00:00:00:00:03 N/A N/A Abandoned fixture-profile
+D 192.0.2.13 02:00:00:00:00:04 864 14400 Bound fixture-profile
+D 192.0.2.14 02:00:00:00:00:05 948 14400 Bound fixture-profile
+D 192.0.2.15 02:00:00:00:00:06 779 14400 Bound fixture-profile
+D 192.0.2.16 02:00:00:00:00:07 N/A N/A Abandoned fixture-profile
+D 192.0.2.17 02:00:00:00:00:08 252 14400 Bound fixture-profile

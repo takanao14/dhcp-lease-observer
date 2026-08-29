@@ -36,7 +36,8 @@ func TestRunPersistsStateMetricsAndEvents(t *testing.T) {
 		!strings.Contains(metrics, `dhcp_lease_observer_leases{source_instance="fixture-router",state="bound"} 24`) {
 		t.Fatalf("unexpected metrics:\n%s", metrics)
 	}
-	if strings.Count(outputBuffer.String(), `"type":"lease_bound"`) != 24 {
+	if strings.Count(outputBuffer.String(), `"event":"lease_bound"`) != 24 ||
+		!strings.Contains(outputBuffer.String(), `"source":"ix2106_cli","source_instance":"fixture-router"`) {
 		t.Fatalf("unexpected events: %s", outputBuffer.String())
 	}
 }
@@ -90,7 +91,8 @@ func TestRunTreatsARPFailureAsDegradedSuccess(t *testing.T) {
 		t.Fatalf("ARP metadata = %#v", snapshot)
 	}
 	if strings.Contains(events.String(), "raw router") ||
-		!strings.Contains(events.String(), `"up":true,"degraded":true,"failure_class":"arp_acquisition_failed"`) {
+		!strings.Contains(events.String(), `"severity":"warn"`) ||
+		!strings.Contains(events.String(), `"status":"degraded","failure_class":"arp_acquisition_failed","retryable":true`) {
 		t.Fatalf("degraded event was not sanitized: %s", events.String())
 	}
 }
@@ -162,7 +164,8 @@ func TestRunEmitsEventsAndAdvancesStateBeforeMetricsFailure(t *testing.T) {
 	if _, loadErr := state.Load(runner.StatePath); loadErr != nil {
 		t.Fatalf("state was not advanced after accepted events: %v", loadErr)
 	}
-	if strings.Count(events.String(), `"type":"lease_bound"`) != 24 {
+	if strings.Count(events.String(), `"event":"lease_bound"`) != 24 ||
+		!strings.Contains(events.String(), `"failure_class":"metrics_write_failed"`) {
 		t.Fatalf("events were not emitted before metrics failure: %s", events.String())
 	}
 }
@@ -183,6 +186,7 @@ func newTestRunner(t *testing.T, bodies transport.CommandBodies) (Runner, *bytes
 		Identity:       generator,
 		StatePath:      filepath.Join(directory, "last-good.json"),
 		PrometheusPath: filepath.Join(directory, "collector.prom"),
+		SourceName:     "ix2106_cli",
 		SourceInstance: "fixture-router",
 		Scope:          "fixture-lan",
 		Events:         events,

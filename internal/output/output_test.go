@@ -115,7 +115,7 @@ func TestWriteEventsProducesValidatedJSONLines(t *testing.T) {
 	}
 	events[0].Profile = "<fixture-profile>"
 	var output bytes.Buffer
-	if err := WriteEvents(&output, events); err != nil {
+	if err := WriteEvents(&output, "ix2106_cli", "fixture-router", events); err != nil {
 		t.Fatalf("write events: %v", err)
 	}
 	lines := strings.Split(strings.TrimSuffix(output.String(), "\n"), "\n")
@@ -123,11 +123,13 @@ func TestWriteEventsProducesValidatedJSONLines(t *testing.T) {
 		t.Fatalf("line count = %d, want 2", len(lines))
 	}
 	for index, line := range lines {
-		var decoded state.Event
+		var decoded TransitionEvent
 		if err := json.Unmarshal([]byte(line), &decoded); err != nil {
 			t.Fatalf("decode line %d: %v", index, err)
 		}
-		if decoded.Type != events[index].Type || decoded.DeviceID != events[index].DeviceID {
+		if decoded.Event != events[index].Type || decoded.DeviceID != events[index].DeviceID ||
+			decoded.Severity != SeverityInfo || decoded.Source != "ix2106_cli" ||
+			decoded.SourceInstance != "fixture-router" {
 			t.Fatalf("decoded event %d = %#v", index, decoded)
 		}
 	}
@@ -143,7 +145,7 @@ func TestWriteEventsValidatesAllEventsBeforeWriting(t *testing.T) {
 		testEvent(state.EventType("invalid"), "d1_BBBBBBBBBBBBBBBBBBBBBB", "192.0.2.11"),
 	}
 	var output bytes.Buffer
-	if err := WriteEvents(&output, events); err == nil {
+	if err := WriteEvents(&output, "ix2106_cli", "fixture-router", events); err == nil {
 		t.Fatal("invalid event was accepted")
 	}
 	if output.Len() != 0 {
@@ -156,8 +158,10 @@ func TestWriteStatusEventIsSanitized(t *testing.T) {
 		SchemaVersion:  1,
 		ObservedAt:     time.Unix(1786842123, 0).UTC(),
 		Event:          "collector_status",
+		Severity:       SeverityError,
+		Source:         "ix2106_cli",
 		SourceInstance: "fixture-router",
-		Up:             false,
+		Status:         StatusFailed,
 		FailureClass:   "authentication_failed",
 		Retryable:      false,
 	}
@@ -177,8 +181,10 @@ func TestWriteStatusEventRecordsOnlyAllowlistedAuthorizationCommand(t *testing.T
 		SchemaVersion:  1,
 		ObservedAt:     time.Unix(1786842123, 0).UTC(),
 		Event:          "collector_status",
+		Severity:       SeverityError,
+		Source:         "ix2106_cli",
 		SourceInstance: "fixture-router",
-		Up:             false,
+		Status:         StatusFailed,
 		FailureClass:   "authorization_failed",
 		Command:        "show ip dhcp lease",
 	}
@@ -200,17 +206,36 @@ func TestWriteStatusEventAcceptsDegradedSuccess(t *testing.T) {
 		SchemaVersion:  1,
 		ObservedAt:     time.Unix(1786842123, 0).UTC(),
 		Event:          "collector_status",
+		Severity:       SeverityWarn,
+		Source:         "ix2106_cli",
 		SourceInstance: "fixture-router",
-		Up:             true,
-		Degraded:       true,
+		Status:         StatusDegraded,
 		FailureClass:   "arp_parse_failed",
 	}
 	var output bytes.Buffer
 	if err := WriteStatusEvent(&output, event); err != nil {
 		t.Fatalf("write degraded status event: %v", err)
 	}
-	if !strings.Contains(output.String(), `"up":true,"degraded":true,"failure_class":"arp_parse_failed"`) {
+	if !strings.Contains(output.String(), `"status":"degraded","failure_class":"arp_parse_failed","retryable":false`) {
 		t.Fatalf("unexpected degraded event: %s", output.String())
+	}
+}
+
+func TestWriteStartupFailureEventAllowsMissingSourceBeforeConfigLoad(t *testing.T) {
+	event := StartupFailureEvent{
+		SchemaVersion: 1,
+		ObservedAt:    time.Unix(1786842123, 0).UTC(),
+		Event:         "collector_start_failed",
+		Severity:      SeverityError,
+		FailureClass:  "configuration_invalid",
+	}
+	var output bytes.Buffer
+	if err := WriteStartupFailureEvent(&output, event); err != nil {
+		t.Fatalf("write startup failure: %v", err)
+	}
+	if !strings.Contains(output.String(), `"event":"collector_start_failed"`) ||
+		strings.Contains(output.String(), `"source"`) {
+		t.Fatalf("unexpected startup failure: %s", output.String())
 	}
 }
 
@@ -219,7 +244,7 @@ func TestWritersPropagateDestinationFailure(t *testing.T) {
 	if err := WritePrometheus(writer, testMetrics()); err == nil {
 		t.Fatal("Prometheus writer failure was ignored")
 	}
-	if err := WriteEvents(writer, []state.Event{
+	if err := WriteEvents(writer, "ix2106_cli", "fixture-router", []state.Event{
 		testEvent(state.EventLeaseBound, "d1_AAAAAAAAAAAAAAAAAAAAAA", "192.0.2.10"),
 	}); err == nil {
 		t.Fatal("JSON Lines writer failure was ignored")

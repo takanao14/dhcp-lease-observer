@@ -31,7 +31,7 @@ var (
 	leaseRowPattern   = regexp.MustCompile(
 		`^([DF])\s+([0-9]{1,3}(?:\.[0-9]{1,3}){3})\s+` +
 			`([0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5})\s+` +
-			`([0-9]+)\s+([0-9]+)\s+(\S+)\s+(\S+)$`,
+			`(\S+)\s+(\S+)\s+(\S+)\s+(\S+)$`,
 	)
 	configPromptPattern = regexp.MustCompile(`^[A-Za-z0-9._-]+\(config\)%$`)
 )
@@ -62,19 +62,31 @@ func ParseLease(reader io.Reader) (model.LeaseTable, error) {
 	}
 
 	table := model.LeaseTable{
-		ReportedCount: reportedCount,
+		ReportedCount: 0,
 		Records:       make([]model.LeaseRecord, 0, reportedCount),
 	}
+	boundRows := 0
 	for index, line := range lines[3:] {
-		if len(table.Records) >= maxLeaseRecords {
+		if index >= maxLeaseRecords {
 			return model.LeaseTable{}, invalidLease("record limit exceeded")
 		}
-		record, err := parseLeaseRow(line)
+		record, disposition, err := parseLeaseRow(line)
 		if err != nil {
 			return model.LeaseTable{}, invalidLease("row %d is unsupported", index+4)
 		}
-		table.Records = append(table.Records, record)
+		switch disposition {
+		case leaseRowBound:
+			boundRows++
+			table.Records = append(table.Records, record)
+		case leaseRowOffered, leaseRowAbandoned:
+			// IX2106 lists these non-bound addresses in the table but excludes
+			// them from the leading "Leased to" count.
+		}
 	}
+	if boundRows != reportedCount {
+		return model.LeaseTable{}, invalidLease("reported count does not match bound rows")
+	}
+	table.ReportedCount = len(table.Records)
 
 	if err := table.Validate(); err != nil {
 		return model.LeaseTable{}, fmt.Errorf("%w: validation failed", ErrInvalidLeaseTranscript)
@@ -112,10 +124,18 @@ func readTranscriptLines(reader io.Reader, invalid invalidTranscriptFunc) ([]str
 	return lines, nil
 }
 
-func parseLeaseRow(line string) (model.LeaseRecord, error) {
+type leaseRowDisposition uint8
+
+const (
+	leaseRowBound leaseRowDisposition = iota
+	leaseRowOffered
+	leaseRowAbandoned
+)
+
+func parseLeaseRow(line string) (model.LeaseRecord, leaseRowDisposition, error) {
 	match := leaseRowPattern.FindStringSubmatch(line)
 	if match == nil {
-		return model.LeaseRecord{}, ErrInvalidLeaseTranscript
+		return model.LeaseRecord{}, 0, ErrInvalidLeaseTranscript
 	}
 
 	assignment := model.AssignmentDynamic
@@ -124,22 +144,31 @@ func parseLeaseRow(line string) (model.LeaseRecord, error) {
 	}
 	ip, err := netip.ParseAddr(match[2])
 	if err != nil || !ip.Is4() {
-		return model.LeaseRecord{}, ErrInvalidLeaseTranscript
+		return model.LeaseRecord{}, 0, ErrInvalidLeaseTranscript
 	}
 	hardwareAddress, err := model.ParseMACAddress(match[3])
 	if err != nil {
-		return model.LeaseRecord{}, ErrInvalidLeaseTranscript
+		return model.LeaseRecord{}, 0, ErrInvalidLeaseTranscript
+	}
+	if match[6] == "Offered" || match[6] == "Abandoned" {
+		if match[4] != "N/A" || match[5] != "N/A" {
+			return model.LeaseRecord{}, 0, ErrInvalidLeaseTranscript
+		}
+		if match[6] == "Offered" {
+			return model.LeaseRecord{}, leaseRowOffered, nil
+		}
+		return model.LeaseRecord{}, leaseRowAbandoned, nil
+	}
+	if match[6] != "Bound" {
+		return model.LeaseRecord{}, 0, ErrInvalidLeaseTranscript
 	}
 	boundTime, err := strconv.ParseInt(match[4], 10, 64)
 	if err != nil {
-		return model.LeaseRecord{}, ErrInvalidLeaseTranscript
+		return model.LeaseRecord{}, 0, ErrInvalidLeaseTranscript
 	}
 	leaseTime, err := strconv.ParseInt(match[5], 10, 64)
 	if err != nil {
-		return model.LeaseRecord{}, ErrInvalidLeaseTranscript
-	}
-	if match[6] != "Bound" {
-		return model.LeaseRecord{}, ErrInvalidLeaseTranscript
+		return model.LeaseRecord{}, 0, ErrInvalidLeaseTranscript
 	}
 
 	return model.LeaseRecord{
@@ -150,7 +179,7 @@ func parseLeaseRow(line string) (model.LeaseRecord, error) {
 		LeaseTimeSeconds: leaseTime,
 		State:            model.LeaseStateBound,
 		Profile:          match[7],
-	}, nil
+	}, leaseRowBound, nil
 }
 
 func invalidLease(format string, arguments ...any) error {

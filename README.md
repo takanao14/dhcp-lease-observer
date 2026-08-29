@@ -15,9 +15,11 @@ names. Never add credentials or unredacted router output to this repository.
 
 - Accept the known IX2106 lease and ARP table layouts and a final config prompt.
 - Preserve `BoundTime` and `LeaseTime` as integer seconds.
-- Accept only the documented and observed `Bound` lease state. Preserve profile
-  names as source strings and reject an unconfirmed state until an anonymized
-  real-device fixture establishes its semantics.
+- Emit only the documented and observed `Bound` lease state. Recognize the
+  observed `Offered` and `Abandoned` rows only when both timers are `N/A`,
+  exclude them from the snapshot, and require the reported client count to
+  match the retained `Bound` rows. Preserve profile names as source strings and
+  reject every other state.
 - Preserve ARP TTL and uptime as source strings until their semantics are
   confirmed.
 - Validate the row count reported by the device.
@@ -106,9 +108,21 @@ Before reporting parser failures, redact device output as described in
   file, `fsync`, rename, and directory `fsync`.
 - Validate the complete transition event set before writing one JSON object per
   line. Cap one poll at 4,096 events and propagate destination write failures.
+- Write runtime events to stdout as JSON Lines with common `schema_version`,
+  `observed_at`, `event`, and `severity` fields. Events emitted after loading
+  configuration also include `source` and `source_instance`.
+- Use `event` consistently for lease transitions and collector status. Status
+  records use `status=degraded|failed` and never combine `up` and `degraded`
+  booleans. A successful poll with no lease transitions emits no log heartbeat;
+  use the Prometheus health and timestamp metrics for that purpose.
+- Emit sanitized startup failures as `collector_start_failed`. Runtime failures
+  are not duplicated as plain-text stderr messages. Stderr is reserved for CLI
+  usage errors and the fallback case where a JSON log cannot be written.
 
 ## Collector configuration
 
+- Use GNU-style long options with two hyphens. Multi-character single-hyphen
+  forms such as `-config` are rejected; `-h` is the only supported short form.
 - Start from `config.example.json`; configuration rejects unknown fields,
   symlinks, group/world-writable files, unbounded timeouts, and unsafe labels.
 - Supply credentials separately with `--credentials-dir`. The directory must
@@ -116,6 +130,8 @@ Before reporting parser failures, redact device output as described in
   The identity key must contain at least 32 random bytes.
 - `--check-config` validates configuration without reading credentials or
   contacting the router. Normal collection writes JSON Lines events to stdout.
+- The process handles SIGINT and SIGTERM by canceling the bounded collection
+  context so a systemd stop does not wait for the SSH phase timeout.
 - DHCP lease data is authoritative. Failure to collect or parse the optional
-  ARP table produces an `up=true`, degraded status event and records only a
-  sanitized ARP failure class.
+  ARP table leaves the Prometheus `up` metric at one, emits a
+  `status="degraded"` event, and records only a sanitized ARP failure class.

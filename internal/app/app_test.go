@@ -57,8 +57,10 @@ func TestRunSanitizesConfigurationErrors(t *testing.T) {
 	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 	secretPath := filepath.Join(t.TempDir(), "secret-name.json")
 	code := Run([]string{"--config", secretPath, "--check-config"}, stdout, stderr, "test")
-	if code != ExitUsage || strings.Contains(stderr.String(), secretPath) {
-		t.Fatalf("code = %d, stderr = %q", code, stderr.String())
+	if code != ExitUsage || stderr.Len() != 0 || strings.Contains(stdout.String(), secretPath) ||
+		!strings.Contains(stdout.String(), `"event":"collector_start_failed"`) ||
+		!strings.Contains(stdout.String(), `"failure_class":"configuration_invalid"`) {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, stdout.String(), stderr.String())
 	}
 }
 
@@ -73,7 +75,38 @@ func TestRunRequiresAbsoluteCredentialsDirectory(t *testing.T) {
 	}
 	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
 	code := Run([]string{"--config", path, "--credentials-dir", "relative"}, stdout, stderr, "test")
-	if code != ExitUsage || !strings.Contains(stderr.String(), "absolute clean path") {
-		t.Fatalf("code = %d, stderr = %q", code, stderr.String())
+	if code != ExitUsage || stderr.Len() != 0 ||
+		!strings.Contains(stdout.String(), `"failure_class":"credentials_invalid"`) ||
+		!strings.Contains(stdout.String(), `"source_instance":"fixture-router"`) {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, stdout.String(), stderr.String())
+	}
+}
+
+func TestRunRejectsSingleHyphenLongOptions(t *testing.T) {
+	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	code := Run([]string{"-version"}, stdout, stderr, "test")
+	if code != ExitUsage || stdout.Len() != 0 ||
+		!strings.Contains(stderr.String(), "use --long-option") {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, stdout.String(), stderr.String())
+	}
+}
+
+func TestRunHelpUsesDoubleHyphenLongOptions(t *testing.T) {
+	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	code := Run([]string{"--help"}, stdout, stderr, "test")
+	if code != ExitSuccess || stdout.Len() != 0 ||
+		!strings.Contains(stderr.String(), "--credentials-dir PATH") ||
+		strings.Contains(stderr.String(), "  -credentials-dir") {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, stdout.String(), stderr.String())
+	}
+}
+
+func TestRunUnknownOptionDoesNotRenderSingleHyphenLongForm(t *testing.T) {
+	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	code := Run([]string{"--unknown"}, stdout, stderr, "test")
+	if code != ExitUsage || stdout.Len() != 0 ||
+		!strings.Contains(stderr.String(), "--config PATH") ||
+		strings.Contains(stderr.String(), "-unknown") {
+		t.Fatalf("code = %d, stdout = %q, stderr = %q", code, stdout.String(), stderr.String())
 	}
 }

@@ -34,6 +34,7 @@ type Runner struct {
 	Identity       *identity.Generator
 	StatePath      string
 	PrometheusPath string
+	SourceName     string
 	SourceInstance string
 	Scope          string
 	Events         io.Writer
@@ -72,6 +73,7 @@ func (failure *Failure) Command() string {
 func (runner Runner) Run(ctx context.Context) (Result, error) {
 	if runner.Source == nil || runner.Identity == nil || runner.Events == nil || runner.Now == nil ||
 		runner.StatePath == "" || runner.PrometheusPath == "" ||
+		!labelPattern.MatchString(runner.SourceName) ||
 		!labelPattern.MatchString(runner.SourceInstance) || !labelPattern.MatchString(runner.Scope) {
 		return Result{}, newFailure("invalid_runner", false)
 	}
@@ -96,6 +98,7 @@ func (runner Runner) Run(ctx context.Context) (Result, error) {
 	arpAvailable := bodies.ARPFailure == nil
 	arpFailureClass := ""
 	arpFailureCommand := ""
+	arpFailureRetryable := false
 	if arpAvailable {
 		arp, err = parser.ParseARP(bytes.NewReader(bodies.ARP))
 		if err != nil {
@@ -103,9 +106,10 @@ func (runner Runner) Run(ctx context.Context) (Result, error) {
 			arpFailureClass = "arp_parse_failed"
 		}
 	} else {
-		kind, _, command := classifyError(bodies.ARPFailure)
+		kind, retryable, command := classifyError(bodies.ARPFailure)
 		arpFailureClass = "arp_" + kind
 		arpFailureCommand = command
+		arpFailureRetryable = retryable
 		if len(arpFailureClass) > 64 {
 			arpFailureClass = "arp_acquisition_failed"
 		}
@@ -130,7 +134,7 @@ func (runner Runner) Run(ctx context.Context) (Result, error) {
 		}
 		return Result{}, runner.fail(startedAt, previousState, newFailure(kind, false))
 	}
-	if err := output.WriteEvents(runner.Events, events); err != nil {
+	if err := output.WriteEvents(runner.Events, runner.SourceName, runner.SourceInstance, events); err != nil {
 		return Result{}, newFailure("event_output_failed", true)
 	}
 	if !arpAvailable {
@@ -138,10 +142,12 @@ func (runner Runner) Run(ctx context.Context) (Result, error) {
 			SchemaVersion:  1,
 			ObservedAt:     observedAt,
 			Event:          "collector_status",
+			Severity:       output.SeverityWarn,
+			Source:         runner.SourceName,
 			SourceInstance: runner.SourceInstance,
-			Up:             true,
-			Degraded:       true,
+			Status:         output.StatusDegraded,
 			FailureClass:   arpFailureClass,
+			Retryable:      arpFailureRetryable,
 			Command:        arpFailureCommand,
 		}); err != nil {
 			return Result{}, newFailure("event_output_failed", true)
@@ -155,6 +161,9 @@ func (runner Runner) Run(ctx context.Context) (Result, error) {
 		runner.PrometheusPath,
 		runner.metrics(true, startedAt, duration, &current),
 	); err != nil {
+		if statusErr := runner.writeFailureStatus(runner.Now().UTC(), newFailure("metrics_write_failed", true)); statusErr != nil {
+			return Result{}, newFailure("event_output_failed", true)
+		}
 		return Result{}, newFailure("metrics_write_failed", true)
 	}
 	return Result{Events: len(events), ARPAvailable: arpAvailable}, nil
@@ -162,24 +171,33 @@ func (runner Runner) Run(ctx context.Context) (Result, error) {
 
 func (runner Runner) fail(startedAt time.Time, previous *state.Snapshot, failure *Failure) error {
 	observedAt := runner.Now().UTC()
-	statusErr := output.WriteStatusEvent(runner.Events, output.StatusEvent{
+	metrics := runner.metrics(false, startedAt, nonNegativeDuration(observedAt.Sub(startedAt)), previous)
+	if err := output.SavePrometheus(runner.PrometheusPath, metrics); err != nil {
+		metricsFailure := newFailure("metrics_write_failed", true)
+		if statusErr := runner.writeFailureStatus(observedAt, metricsFailure); statusErr != nil {
+			return newFailure("event_output_failed", true)
+		}
+		return metricsFailure
+	}
+	if err := runner.writeFailureStatus(observedAt, failure); err != nil {
+		return newFailure("event_output_failed", true)
+	}
+	return failure
+}
+
+func (runner Runner) writeFailureStatus(observedAt time.Time, failure *Failure) error {
+	return output.WriteStatusEvent(runner.Events, output.StatusEvent{
 		SchemaVersion:  1,
 		ObservedAt:     observedAt,
 		Event:          "collector_status",
+		Severity:       output.SeverityError,
+		Source:         runner.SourceName,
 		SourceInstance: runner.SourceInstance,
-		Up:             false,
+		Status:         output.StatusFailed,
 		FailureClass:   failure.kind,
 		Retryable:      failure.retryable,
 		Command:        failure.command,
 	})
-	metrics := runner.metrics(false, startedAt, nonNegativeDuration(observedAt.Sub(startedAt)), previous)
-	if err := output.SavePrometheus(runner.PrometheusPath, metrics); err != nil {
-		return newFailure("metrics_write_failed", true)
-	}
-	if statusErr != nil {
-		return newFailure("event_output_failed", true)
-	}
-	return failure
 }
 
 func (runner Runner) metrics(

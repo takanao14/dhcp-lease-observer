@@ -56,6 +56,30 @@ func TestParseLeaseEmptyFixture(t *testing.T) {
 	}
 }
 
+func TestParseLeaseMixedLiveStates(t *testing.T) {
+	table := parseLeaseFixture(t, "mixed-state-lease.txt")
+	if table.ReportedCount != 4 || len(table.Records) != 4 {
+		t.Fatalf("mixed-state fixture parsed as %#v", table)
+	}
+	for _, record := range table.Records {
+		if record.State != model.LeaseStateBound {
+			t.Fatalf("non-bound record retained: %#v", record)
+		}
+	}
+}
+
+func TestParseLeaseRejectsInactiveStateWithTimers(t *testing.T) {
+	transcript := strings.Join([]string{
+		"Leased to 0 clients",
+		leaseCodes,
+		leaseColumns,
+		"D 192.0.2.70 02:00:00:00:00:40 1 60 Offered fixture-profile",
+	}, "\n")
+	if _, err := ParseLease(strings.NewReader(transcript)); !errors.Is(err, ErrInvalidLeaseTranscript) {
+		t.Fatalf("error = %v, want ErrInvalidLeaseTranscript", err)
+	}
+}
+
 func TestParseLeaseRejectsFailureFixtures(t *testing.T) {
 	tests := []struct {
 		name    string
