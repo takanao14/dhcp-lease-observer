@@ -3,27 +3,39 @@
   "extends": [
     "config:recommended",
     "helpers:pinGitHubActionDigests",
-    ":semanticCommits"
+    ":semanticCommits",
+    ":separateMajorReleases",
+    ":combinePatchMinorReleases",
+    ":rebaseStalePrs"
   ],
   "semanticCommitType": "build",
   "timezone": "Asia/Tokyo",
+  "minimumReleaseAge": "1 day",
+  "labels": ["dependencies", "renovate", "manual-review"],
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "labels": ["dependencies", "renovate", "manual-review", "security"],
+    "assignees": ["takanao14"],
+    "minimumReleaseAge": null
+  },
   "packageRules": [
     {
-      "description": "Track indirect Go modules as well",
+      "description": "Track indirect Go modules as well; golang.org/x/sys is pulled in by the SSH transport dependency.",
       "matchManagers": ["gomod"],
       "matchDepTypes": ["indirect"],
       "enabled": true
     },
     {
-      "description": "Handle the go directive manually; it changes the release contract",
+      "description": "The go directive raises the minimum toolchain required to build a release, so it is reviewed and bumped manually.",
       "matchManagers": ["gomod"],
       "matchDepNames": ["go"],
       "enabled": false
     },
     {
-      "description": "Security-relevant transport dependency",
-      "matchPackageNames": ["golang.org/x/crypto"],
-      "minimumReleaseAge": "3 days"
+      "description": "Never auto-merge major updates.",
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "labels": ["dependencies", "renovate", "manual-review", "major-update"]
     }
   ]
 }
