@@ -1,61 +1,64 @@
 # DHCP Lease Observer
 
-This repository contains the IX2106 DHCP lease collector and its anonymized
-Stage 1 fixtures. The Go collector uses a pinned SSH host key, an
-IX2106-specific algorithm allowlist, bounded prompt-driven shell I/O, and fixed
-commands only. It derives opaque HMAC device IDs, emits deterministic lease
+This Go collector retrieves IX2106 DHCP leases using a pinned SSH host key,
+an IX2106-specific algorithm allowlist, bounded prompt-driven shell I/O, and
+fixed commands only. It derives opaque HMAC device IDs, emits deterministic lease
 transition events, and atomically persists private last-good state without
 plain MAC addresses. It has not yet been enabled against a live device.
 
 The fixtures are anonymized. They contain only TEST-NET-1 IPv4 addresses,
 synthetic locally administered MAC addresses, and synthetic device/profile
-names. Never add credentials or unredacted router output to this repository.
+names. Follow [`SECURITY.md`](SECURITY.md) when preparing fixtures or reporting
+failures; never include credentials or unredacted router output.
 
 ## Parser contract
 
-- Accept the known IX2106 lease and ARP table layouts and a final config prompt.
-- Preserve `BoundTime` and `LeaseTime` as integer seconds.
-- Emit only the documented and observed `Bound` lease state. Recognize the
-  observed `Offered` and `Abandoned` rows only when both timers are `N/A`,
-  exclude them from the snapshot, and require the reported client count to
-  match the retained `Bound` rows. Preserve profile names as source strings and
-  reject every other state.
+- Accept the known IX2106 lease and ARP table layouts and an optional final
+  config prompt. Session framing requires the prompt before parsing.
+- Preserve `BoundTime` and `LeaseTime` as integer seconds, and profile names as
+  source strings.
+- Retain only `Bound` rows. Accept observed `Offered` and `Abandoned` rows only
+  with `N/A` timers and exclude them from the snapshot. Reject other states.
+- Require the reported lease count to match retained `Bound` rows and the ARP
+  dynamic count to match parsed neighbors. `Leased to 0 clients` is valid.
 - Preserve ARP TTL and uptime as source strings until their semantics are
   confirmed.
-- Validate the row count reported by the device.
 - Reject paged, truncated, unknown, and config-lock transcripts.
-- Treat `Leased to 0 clients` as a valid empty snapshot.
-- Accept SSH EOF only after the expected config prompt. EOF before the prompt is
-  retryable `unexpected_eof`; the partial result is unusable and cannot emit
-  lease-removal events.
-- Apply the same prompt boundary to command deadlines. A timeout before the
-  prompt is retryable `timeout`; a deadline observed after the prompt does not
-  invalidate the already complete command body.
-- Classify rejected SSH authentication as non-retryable
-  `authentication_failed`. Do not retain a username, password, or device
-  transcript in its fixture or error contract.
-- Classify rejection of an allowlisted command after successful authentication
-  as non-retryable `authorization_failed`. Record the fixed command name, but do
-  not retain the device's rejection transcript.
-- Classify a mismatch against the pinned SSH identity as non-retryable
-  `host_key_mismatch`. Do not retain the observed key, fingerprint, or target
-  address in fixtures or normal logs; require independent verification before
-  changing the pin.
-- Classify an occupied exclusive config process as retryable `config_occupied`.
-  Leave the other session untouched, do not invoke a forced unlock command, and
-  retry at the next scheduled poll.
-- Classify a pager marker after `terminal length 0` as non-retryable
-  `pager_detected` for the current poll. Preserve last-good state, perform no
-  same-poll retry, and leave the next scheduled poll enabled.
-- Require the Monitor config prompt after each fixed command. A different
-  prompt-like terminator is non-retryable `prompt_mismatch` for the current poll,
-  even when the command body alone would parse successfully.
-- Normalize a parser rejection after a complete prompt as non-retryable
-  `parse_failed` for the current poll. Preserve last-good state and never copy a
-  rejected source row or parser exception detail into the failure contract.
-- Remove one exact echo of the fixed command before parsing and also accept a
-  transcript with echo disabled. Reject a different command-like first line as
-  non-retryable `command_echo_mismatch` for the current poll.
+
+## Session and failure contract
+
+Require the Monitor config prompt after each fixed command, even when the body
+alone would parse successfully. EOF or a deadline after a complete prompt does
+not invalidate the command body. Remove one exact command echo before parsing;
+echo-disabled responses are also accepted.
+
+Acquisition, framing, and lease parsing failures preserve last-good state and
+emit no lease transitions. Errors retain only sanitized failure classes and,
+for authorization failures, the fixed command name. Never include source output,
+credentials, usernames, target addresses, observed keys, fingerprints, rejected
+rows, or parser exception details in failure logs or fixtures.
+
+| Condition | Failure class | Retryable |
+| --- | --- | --- |
+| EOF before the expected prompt | `unexpected_eof` | Yes |
+| Command deadline before the expected prompt | `timeout` | Yes |
+| Rejected SSH authentication | `authentication_failed` | No |
+| Rejected fixed command after authentication | `authorization_failed` | No |
+| Pinned SSH identity mismatch | `host_key_mismatch` | No |
+| Occupied exclusive config process | `config_occupied` | Yes |
+| Pager marker after `terminal length 0` | `pager_detected` | No |
+| Different prompt-like terminator | `prompt_mismatch` | No |
+| Parser rejection after a complete prompt | `parse_failed` | No |
+| Different command-like first line | `command_echo_mismatch` | No |
+
+Each poll makes one attempt; retryability never triggers an internal retry or
+disables the next scheduled poll. Leave occupied config sessions untouched and
+never force an unlock. Independently verify the SSH identity before changing
+its pin.
+
+DHCP leases are authoritative. Optional ARP acquisition or parsing failures
+leave Prometheus `up` at one, emit `status="degraded"`, and record a sanitized
+ARP failure class.
 
 ## Run
 
@@ -74,9 +77,6 @@ contracts before publishing deterministic `linux/amd64` and `linux/arm64`
 archives plus `checksums.txt`. Each archive contains only the statically linked
 collector binary and `LICENSE`; the version is embedded in the binary at build
 time.
-
-Before reporting parser failures, redact device output as described in
-[`SECURITY.md`](SECURITY.md). Do not attach raw router transcripts to an issue.
 
 ## State contract
 
@@ -130,11 +130,8 @@ Before reporting parser failures, redact device output as described in
   contain regular files named `ix2106-password` and `identity-key` that are
   neither group-writable nor accessible to other users, so both a private
   `0600` file and a systemd `LoadCredential` file exposed as `0440` are
-  accepted. The identity key must contain at least 32 random bytes.
+  accepted.
 - `--check-config` validates configuration without reading credentials or
-  contacting the router. Normal collection writes JSON Lines events to stdout.
+  contacting the router.
 - The process handles SIGINT and SIGTERM by canceling the bounded collection
   context so a systemd stop does not wait for the SSH phase timeout.
-- DHCP lease data is authoritative. Failure to collect or parse the optional
-  ARP table leaves the Prometheus `up` metric at one, emits a
-  `status="degraded"` event, and records only a sanitized ARP failure class.
