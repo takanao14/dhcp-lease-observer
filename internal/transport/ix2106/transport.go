@@ -156,8 +156,9 @@ func Collect(ctx context.Context, config Config, password []byte) (CommandBodies
 }
 
 type client struct {
-	network net.Conn
-	ssh     *ssh.Client
+	network          net.Conn
+	ssh              *ssh.Client
+	stopCancellation func() bool
 }
 
 func dial(ctx context.Context, config Config, password []byte) (*client, error) {
@@ -167,6 +168,13 @@ func dial(ctx context.Context, config Config, password []byte) (*client, error) 
 		return nil, newTransportError(ErrorConnectFailed, true)
 	}
 
+	stopCancellation := context.AfterFunc(ctx, func() { _ = network.Close() })
+	connected := false
+	defer func() {
+		if !connected {
+			stopCancellation()
+		}
+	}()
 	authStarted := atomic.Bool{}
 	sshConfig := clientConfig(ctx, config, network, password, &authStarted)
 	if err := setDeadline(network, ctx, config.HandshakeTimeout); err != nil {
@@ -186,6 +194,9 @@ func dial(ctx context.Context, config Config, password []byte) (*client, error) 
 			}
 			return nil, newTransportError(ErrorHandshakeTimeout, true)
 		}
+		if ctx.Err() != nil {
+			return nil, newTransportError(ErrorSessionFailed, true)
+		}
 		if authStarted.Load() {
 			failure, _ := sessioncontract.ConnectionFailure(sessioncontract.FailureAuthentication)
 			return nil, failure
@@ -196,7 +207,8 @@ func dial(ctx context.Context, config Config, password []byte) (*client, error) 
 		connection.Close()
 		return nil, newTransportError(ErrorSessionFailed, true)
 	}
-	return &client{network: network, ssh: ssh.NewClient(connection, channels, requests)}, nil
+	connected = true
+	return &client{network: network, ssh: ssh.NewClient(connection, channels, requests), stopCancellation: stopCancellation}, nil
 }
 
 func clientConfig(
@@ -346,6 +358,9 @@ func (client *client) nextFrame(
 }
 
 func (client *client) close() {
+	if client.stopCancellation != nil {
+		client.stopCancellation()
+	}
 	client.ssh.Close()
 	client.network.Close()
 }

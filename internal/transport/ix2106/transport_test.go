@@ -296,6 +296,7 @@ type testServerBehavior struct {
 	arpPager      bool
 	deniedCommand string
 	stallSetup    string
+	onPhase       func(string)
 }
 
 func startTestServerBehavior(
@@ -320,6 +321,9 @@ func startTestServerBehavior(
 			MACs:         []string{ssh.HMACSHA256, ssh.HMACSHA512},
 		},
 		PasswordCallback: func(metadata ssh.ConnMetadata, supplied []byte) (*ssh.Permissions, error) {
+			if behavior.onPhase != nil {
+				behavior.onPhase("auth")
+			}
 			if behavior.authDelay > 0 {
 				time.Sleep(behavior.authDelay)
 			}
@@ -359,6 +363,9 @@ func startTestServerBehavior(
 				_ = newChannel.Reject(ssh.UnknownChannelType, "unsupported")
 				continue
 			}
+			if behavior.onPhase != nil {
+				behavior.onPhase("session")
+			}
 			if behavior.stallSetup == "session" {
 				_ = sshConnection.Wait()
 				return
@@ -377,6 +384,9 @@ func startTestServerBehavior(
 func handleTestSession(channel ssh.Channel, requests <-chan *ssh.Request, behavior testServerBehavior) {
 	defer channel.Close()
 	for request := range requests {
+		if behavior.onPhase != nil {
+			behavior.onPhase(request.Type)
+		}
 		if request.Type == behavior.stallSetup {
 			continue
 		}
@@ -484,5 +494,82 @@ func TestSessionSetupIsBounded(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestCancellationInterruptsSSHWaits(t *testing.T) {
+	for _, phase := range []string{"auth", "session", "pty-req", "shell"} {
+		t.Run(phase, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			reached := make(chan struct{}, 1)
+			behavior := testServerBehavior{stallSetup: phase, onPhase: func(actual string) {
+				if actual == phase {
+					reached <- struct{}{}
+				}
+			}}
+			if phase == "auth" {
+				behavior.authDelay = time.Second
+			}
+			server := startTestServerBehavior(t, "fixture-user", "fixture-password", behavior)
+			defer server.close()
+			config := NewConfig(server.address, "fixture-user", server.fingerprint)
+			done := make(chan error, 1)
+			go func() { _, err := Collect(ctx, config, []byte("fixture-password")); done <- err }()
+			select {
+			case <-reached:
+			case <-time.After(3 * time.Second):
+				t.Fatal("phase not reached")
+			}
+			cancel()
+			select {
+			case err := <-done:
+				if err == nil {
+					t.Fatal("canceled collection succeeded")
+				}
+				var failure *sessioncontract.Failure
+				if errors.As(err, &failure) && failure.Kind() == sessioncontract.FailureAuthentication {
+					t.Fatal("cancellation was classified as rejected credentials")
+				}
+			case <-time.After(500 * time.Millisecond):
+				t.Fatal("cancellation did not interrupt SSH wait")
+			}
+		})
+	}
+}
+
+func TestCancellationInterruptsHandshake(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	accepted := make(chan net.Conn, 1)
+	go func() {
+		conn, err := listener.Accept()
+		if err == nil {
+			accepted <- conn
+		}
+	}()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	config := NewConfig(listener.Addr().String(), "fixture-user", "SHA256:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+	done := make(chan error, 1)
+	go func() { _, err := Collect(ctx, config, []byte("fixture-password")); done <- err }()
+	var conn net.Conn
+	select {
+	case conn = <-accepted:
+	case <-time.After(3 * time.Second):
+		t.Fatal("connection not accepted")
+	}
+	defer conn.Close()
+	cancel()
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("canceled handshake succeeded")
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("handshake ignored cancellation")
 	}
 }
