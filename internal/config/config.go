@@ -22,6 +22,10 @@ const (
 	IdentityCredential  = "identity-key"
 	maxPasswordBytes    = 1024
 	maxIdentityKeyBytes = 4096
+	// systemd LoadCredential exposes credentials as mode 0440 owned by root and
+	// grants the service user access through an ACL, so group read must stay
+	// allowed. Group write and every other-user permission remain forbidden.
+	forbiddenCredentialPermissions = 0o027
 )
 
 var ErrInvalidConfig = errors.New("invalid collector configuration")
@@ -158,7 +162,7 @@ func (credentials *Credentials) Clear() {
 }
 
 func readCredential(path string, maxBytes int64) ([]byte, error) {
-	file, err := safefile.OpenRegular(path, 0o077, maxBytes)
+	file, err := safefile.OpenRegular(path, forbiddenCredentialPermissions, maxBytes)
 	if err != nil {
 		if errors.Is(err, safefile.ErrUnsafeFile) {
 			return nil, ErrInvalidCredentials

@@ -97,6 +97,15 @@ func TestLoadCredentialsAndClear(t *testing.T) {
 	}
 }
 
+func TestLoadCredentialsAcceptsSystemdCredentialMode(t *testing.T) {
+	directory := t.TempDir()
+	writeFile(t, filepath.Join(directory, PasswordCredential), []byte("fixture-password"), 0o440)
+	writeFile(t, filepath.Join(directory, IdentityCredential), []byte(strings.Repeat("k", 32)), 0o440)
+	if _, err := LoadCredentials(directory); err != nil {
+		t.Fatalf("load credentials: %v", err)
+	}
+}
+
 func TestLoadCredentialsRejectsUnsafeInput(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -106,7 +115,9 @@ func TestLoadCredentialsRejectsUnsafeInput(t *testing.T) {
 	}{
 		{name: "short key", password: "fixture-password", key: "short", mode: 0o600},
 		{name: "password newline", password: "fixture\npassword", key: strings.Repeat("k", 32), mode: 0o600},
-		{name: "insecure mode", password: "fixture-password", key: strings.Repeat("k", 32), mode: 0o644},
+		{name: "world readable mode", password: "fixture-password", key: strings.Repeat("k", 32), mode: 0o644},
+		{name: "other readable mode", password: "fixture-password", key: strings.Repeat("k", 32), mode: 0o604},
+		{name: "group writable mode", password: "fixture-password", key: strings.Repeat("k", 32), mode: 0o620},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

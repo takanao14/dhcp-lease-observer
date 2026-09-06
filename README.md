@@ -126,8 +126,10 @@ Before reporting parser failures, redact device output as described in
 - Start from `config.example.json`; configuration rejects unknown fields,
   symlinks, group/world-writable files, unbounded timeouts, and unsafe labels.
 - Supply credentials separately with `--credentials-dir`. The directory must
-  contain mode `0600` regular files named `ix2106-password` and `identity-key`.
-  The identity key must contain at least 32 random bytes.
+  contain regular files named `ix2106-password` and `identity-key` that are
+  neither group-writable nor accessible to other users, so both a private
+  `0600` file and a systemd `LoadCredential` file exposed as `0440` are
+  accepted. The identity key must contain at least 32 random bytes.
 - `--check-config` validates configuration without reading credentials or
   contacting the router. Normal collection writes JSON Lines events to stdout.
 - The process handles SIGINT and SIGTERM by canceling the bounded collection
