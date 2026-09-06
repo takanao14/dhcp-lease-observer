@@ -10,6 +10,7 @@
   ],
   "semanticCommitType": "build",
   "timezone": "Asia/Tokyo",
+  "postUpdateOptions": ["gomodTidy"],
   "minimumReleaseAge": "1 day",
   "labels": ["dependencies", "renovate", "manual-review"],
   "osvVulnerabilityAlerts": true,
