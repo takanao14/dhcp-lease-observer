@@ -295,6 +295,7 @@ type testServerBehavior struct {
 	authDelay     time.Duration
 	arpPager      bool
 	deniedCommand string
+	stallSetup    string
 }
 
 func startTestServerBehavior(
@@ -358,6 +359,10 @@ func startTestServerBehavior(
 				_ = newChannel.Reject(ssh.UnknownChannelType, "unsupported")
 				continue
 			}
+			if behavior.stallSetup == "session" {
+				_ = sshConnection.Wait()
+				return
+			}
 			channel, channelRequests, err := newChannel.Accept()
 			if err != nil {
 				return
@@ -372,6 +377,9 @@ func startTestServerBehavior(
 func handleTestSession(channel ssh.Channel, requests <-chan *ssh.Request, behavior testServerBehavior) {
 	defer channel.Close()
 	for request := range requests {
+		if request.Type == behavior.stallSetup {
+			continue
+		}
 		switch request.Type {
 		case "pty-req":
 			request.Reply(true, nil)
@@ -442,5 +450,39 @@ func (server *testServer) close() {
 	select {
 	case <-server.done:
 	case <-time.After(3 * time.Second):
+	}
+}
+
+func TestSessionSetupIsBounded(t *testing.T) {
+	for _, phase := range []string{"session", "pty-req", "shell"} {
+		for _, overall := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/overall=%t", phase, overall), func(t *testing.T) {
+				server := startTestServerBehavior(t, "fixture-user", "fixture-password", testServerBehavior{stallSetup: phase})
+				defer server.close()
+				config := NewConfig(server.address, "fixture-user", server.fingerprint)
+				ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+				defer cancel()
+				client, err := dial(ctx, config, []byte("fixture-password"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer client.close()
+				config.CommandTimeout = 50 * time.Millisecond
+				if overall {
+					config.CommandTimeout = 2 * time.Second
+					var stop context.CancelFunc
+					ctx, stop = context.WithTimeout(ctx, 50*time.Millisecond)
+					defer stop()
+				}
+				started := time.Now()
+				_, err = client.collect(ctx, config)
+				if err == nil {
+					t.Fatal("stalled setup succeeded")
+				}
+				if time.Since(started) > time.Second {
+					t.Fatal("setup exceeded its deadline")
+				}
+			})
+		}
 	}
 }

@@ -239,6 +239,9 @@ func pinnedHostKey(expected string) ssh.HostKeyCallback {
 }
 
 func (client *client) collect(ctx context.Context, config Config) (CommandBodies, error) {
+	if err := setDeadline(client.network, ctx, config.CommandTimeout); err != nil {
+		return CommandBodies{}, newTransportError(ErrorSessionFailed, true)
+	}
 	shell, err := client.ssh.NewSession()
 	if err != nil {
 		return CommandBodies{}, newTransportError(ErrorSessionFailed, true)
