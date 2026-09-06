@@ -1,0 +1,29 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    ":semanticCommits"
+  ],
+  "semanticCommitType": "build",
+  "timezone": "Asia/Tokyo",
+  "packageRules": [
+    {
+      "description": "Track indirect Go modules as well",
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["indirect"],
+      "enabled": true
+    },
+    {
+      "description": "Handle the go directive manually; it changes the release contract",
+      "matchManagers": ["gomod"],
+      "matchDepNames": ["go"],
+      "enabled": false
+    },
+    {
+      "description": "Security-relevant transport dependency",
+      "matchPackageNames": ["golang.org/x/crypto"],
+      "minimumReleaseAge": "3 days"
+    }
+  ]
+}
