@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -200,8 +201,9 @@ func newTestRunner(t *testing.T, bodies transport.CommandBodies) (Runner, *bytes
 func fixtureBodies(t *testing.T) transport.CommandBodies {
 	t.Helper()
 	return transport.CommandBodies{
-		Lease: readFixture(t, "normal-lease.txt"),
-		ARP:   readFixture(t, "normal-arp.txt"),
+		LeaseObservedAt: time.Date(2026, 8, 16, 1, 2, 5, 0, time.UTC),
+		Lease:           readFixture(t, "normal-lease.txt"),
+		ARP:             readFixture(t, "normal-arp.txt"),
 	}
 }
 
@@ -227,4 +229,106 @@ type failingEventWriter struct{}
 
 func (failingEventWriter) Write([]byte) (int, error) {
 	return 0, errors.New("fixture event destination failure")
+}
+
+func TestLeaseObservationExcludesARPDelay(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		arpFailure bool
+		renewed    bool
+	}{
+		{name: "slow ARP"}, {name: "failed ARP", arpFailure: true}, {name: "real renewal", renewed: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			bodies := fixtureBodies(t)
+			runner, events := newTestRunner(t, bodies)
+			if _, err := runner.Run(context.Background()); err != nil {
+				t.Fatal(err)
+			}
+			previous, err := state.Load(runner.StatePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			bodies.LeaseObservedAt = bodies.LeaseObservedAt.Add(time.Minute)
+			if !test.renewed {
+				lines := strings.Split(string(bodies.Lease), "\n")
+				for i, line := range lines {
+					fields := strings.Fields(line)
+					if len(fields) == 7 && (fields[0] == "D" || fields[0] == "F") {
+						elapsed, err := strconv.Atoi(fields[3])
+						if err != nil {
+							t.Fatal(err)
+						}
+						fields[3] = strconv.Itoa(elapsed + 60)
+						lines[i] = strings.Join(fields, " ")
+					}
+				}
+				bodies.Lease = []byte(strings.Join(lines, "\n"))
+			}
+			if test.arpFailure {
+				bodies.ARPFailure = errors.New("fixture ARP failure")
+				bodies.ARP = nil
+			}
+			now := bodies.LeaseObservedAt
+			runner.Now = func() time.Time { return now }
+			runner.Source = SourceFunc(func(context.Context) (transport.CommandBodies, error) {
+				now = now.Add(10 * time.Second)
+				return bodies, nil
+			})
+			events.Reset()
+			result, err := runner.Run(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+			wantEvents := 0
+			if test.renewed {
+				wantEvents = len(previous.Leases)
+			}
+			if result.Events != wantEvents {
+				t.Fatalf("events = %d, want %d", result.Events, wantEvents)
+			}
+			if strings.Count(events.String(), `"event":"lease_renewed"`) != wantEvents {
+				t.Fatal("incorrect renewal events")
+			}
+			current, err := state.Load(runner.StatePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !current.ObservedAt.Equal(bodies.LeaseObservedAt) {
+				t.Fatal("observation includes ARP delay")
+			}
+			for i, lease := range current.Leases {
+				shift := time.Duration(0)
+				if test.renewed {
+					shift = time.Minute
+				}
+				if !lease.BoundAt.Equal(previous.Leases[i].BoundAt.Add(shift)) || !lease.ExpiresAt.Equal(previous.Leases[i].ExpiresAt.Add(shift)) {
+					t.Fatal("lease times include ARP delay")
+				}
+			}
+		})
+	}
+}
+
+func TestMissingLeaseObservationPreservesLastGoodState(t *testing.T) {
+	bodies := fixtureBodies(t)
+	runner, events := newTestRunner(t, bodies)
+	if _, err := runner.Run(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	before := readFile(t, runner.StatePath)
+	bodies.LeaseObservedAt = time.Time{}
+	runner.Source = SourceFunc(func(context.Context) (transport.CommandBodies, error) { return bodies, nil })
+	events.Reset()
+	_, err := runner.Run(context.Background())
+	var failure *Failure
+	if !errors.As(err, &failure) || failure.Kind() != "normalize_failed" {
+		t.Fatalf("unexpected failure: %v", err)
+	}
+	if readFile(t, runner.StatePath) != before {
+		t.Fatal("last-good state changed")
+	}
+	if strings.Contains(events.String(), `"event":"lease_`) {
+		t.Fatal("invalid observation emitted transitions")
+	}
 }

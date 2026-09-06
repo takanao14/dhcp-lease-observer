@@ -409,6 +409,9 @@ func serveTestCLI(channel ssh.Channel, behavior testServerBehavior) {
 	scanner := bufio.NewScanner(channel)
 	for scanner.Scan() {
 		command := strings.TrimSpace(scanner.Text())
+		if behavior.onPhase != nil {
+			behavior.onPhase(command)
+		}
 		_, _ = fmt.Fprintf(channel, "%s\r\n", command)
 		if command == behavior.deniedCommand {
 			prompt := "ix-fixture%"
@@ -571,5 +574,35 @@ func TestCancellationInterruptsHandshake(t *testing.T) {
 		}
 	case <-time.After(500 * time.Millisecond):
 		t.Fatal("handshake ignored cancellation")
+	}
+}
+
+func TestLeaseTimestampPrecedesARPCollection(t *testing.T) {
+	for _, pager := range []bool{false, true} {
+		t.Run(fmt.Sprintf("pager=%t", pager), func(t *testing.T) {
+			arpStarted := make(chan time.Time, 1)
+			server := startTestServerBehavior(t, "fixture-user", "fixture-password", testServerBehavior{
+				arpPager: pager,
+				onPhase: func(phase string) {
+					if phase == commandARP {
+						arpStarted <- time.Now().UTC()
+					}
+				},
+			})
+			defer server.close()
+			config := NewConfig(server.address, "fixture-user", server.fingerprint)
+			started := time.Now().UTC()
+			bodies, err := Collect(context.Background(), config, []byte("fixture-password"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			arpAt := <-arpStarted
+			if bodies.LeaseObservedAt.Before(started) || bodies.LeaseObservedAt.After(arpAt) {
+				t.Fatal("lease timestamp is outside the lease collection boundary")
+			}
+			if (bodies.ARPFailure != nil) != pager {
+				t.Fatal("unexpected ARP status")
+			}
+		})
 	}
 }

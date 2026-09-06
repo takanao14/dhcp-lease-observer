@@ -115,7 +115,7 @@ func (runner Runner) Run(ctx context.Context) (Result, error) {
 		}
 	}
 
-	observedAt := runner.Now().UTC()
+	observedAt := bodies.LeaseObservedAt.UTC()
 	source := model.LeaseSnapshot{SchemaVersion: model.SchemaVersion, Leases: leases, ARP: arp}
 	current, err := state.Normalize(source, observedAt, runner.Identity)
 	if err != nil {

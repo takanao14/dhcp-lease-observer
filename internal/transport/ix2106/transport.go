@@ -115,9 +115,11 @@ func (config Config) Validate() error {
 }
 
 type CommandBodies struct {
-	Lease      []byte
-	ARP        []byte
-	ARPFailure error
+	// LeaseObservedAt is captured when the complete lease response is accepted, before ARP collection.
+	LeaseObservedAt time.Time
+	Lease           []byte
+	ARP             []byte
+	ARPFailure      error
 }
 
 var (
@@ -301,14 +303,15 @@ func (client *client) collect(ctx context.Context, config Config) (CommandBodies
 	if err != nil {
 		return CommandBodies{}, err
 	}
+	leaseObservedAt := time.Now().UTC()
 	arp, err := client.runCommand(ctx, input, output, config.CommandTimeout, commandARP)
 	if err != nil {
 		_, _ = io.WriteString(input, commandExit+"\n"+commandExit+"\n")
-		return CommandBodies{Lease: lease, ARPFailure: err}, nil
+		return CommandBodies{Lease: lease, LeaseObservedAt: leaseObservedAt, ARPFailure: err}, nil
 	}
 
 	_, _ = io.WriteString(input, commandExit+"\n"+commandExit+"\n")
-	return CommandBodies{Lease: lease, ARP: arp}, nil
+	return CommandBodies{Lease: lease, LeaseObservedAt: leaseObservedAt, ARP: arp}, nil
 }
 
 func (client *client) runCommand(

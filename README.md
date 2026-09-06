@@ -88,7 +88,8 @@ Before reporting parser failures, redact device output as described in
 - Reject an identity-key change against existing state instead of emitting a
   mass removal and rebinding event set.
 - Normalize IX2106 relative lease timers to UTC `bound_at` and `expires_at`
-  values at the observation boundary.
+  values at the complete lease-response boundary, before optional ARP collection.
+  ARP delays and failures do not shift lease timers or create renewal events.
 - Emit only `lease_bound`, `lease_renewed`, `lease_moved`, and `lease_removed`
   transitions. A missing lease is not called expired without stronger evidence.
 - Write last-good JSON through a mode `0600` temporary file, `fsync`, and atomic
