@@ -21,7 +21,7 @@
   },
   "packageRules": [
     {
-      "description": "Track indirect Go modules as well; golang.org/x/sys is pulled in by the SSH transport dependency.",
+      "description": "Enable updates for indirect Go modules; direct Go modules are tracked by default.",
       "matchManagers": ["gomod"],
       "matchDepTypes": ["indirect"],
       "enabled": true
@@ -33,9 +33,8 @@
       "enabled": false
     },
     {
-      "description": "Never auto-merge major updates.",
+      "description": "Label major updates for manual review.",
       "matchUpdateTypes": ["major"],
-      "automerge": false,
       "labels": ["dependencies", "renovate", "manual-review", "major-update"]
     }
   ]
