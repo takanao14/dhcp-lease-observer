@@ -49,3 +49,19 @@ jobs:
         run: go test ./internal/parser/ix2106 -run '^$' -fuzz '^FuzzParseARP$' -fuzztime 10s
       - name: Fuzz state diff
         run: go test ./internal/state -run '^$' -fuzz '^FuzzDiff$' -fuzztime 10s
+
+  ci-required:
+    name: ci-required
+    if: ${{ always() }}
+    needs:
+      - go
+      - quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all Go tests and quality checks
+        env:
+          GO_RESULT: ${{ needs.go.result }}
+          QUALITY_RESULT: ${{ needs.quality.result }}
+        run: |
+          test "$GO_RESULT" = success
+          test "$QUALITY_RESULT" = success

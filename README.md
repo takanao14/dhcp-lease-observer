@@ -78,6 +78,28 @@ archives plus `checksums.txt`. Each archive contains only the statically linked
 collector binary and `LICENSE`; the version is embedded in the binary at build
 time.
 
+## Development and release process
+
+Submit changes to `main` through a pull request. The active main ruleset requires
+a PR with zero required approvals, blocks branch deletion and force pushes, and
+has no owner or bot bypass actors. Run `make check` locally; run `make fuzz` for
+parser, framing, normalization, or diff changes and `make check-config` for
+configuration schema or example changes.
+
+The required GitHub Actions check is `ci-required`. It runs even when its
+dependencies fail and succeeds only when every Go matrix test and the
+`quality` job succeeds. Keep this check name and its dependencies intact when
+updating supported Go versions; the ruleset does not enumerate version-specific
+matrix check names. Do not add path filters or conditions that skip required
+validation.
+
+After the PR checks pass, merge through GitHub. The operator creates a new
+`vMAJOR.MINOR.PATCH` tag on the merged main commit. The tag-triggered Release
+workflow independently reruns tests, race detection, vet, and fixture contracts,
+then verifies archive contents, checksums, and the embedded version before
+publication. Never replace an existing release. Deployment repositories must
+pin both the explicit release version and archive SHA-256 checksum.
+
 ## State contract
 
 - Require an identity key containing at least 32 bytes. Deployment must create
